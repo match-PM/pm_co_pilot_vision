@@ -33,44 +33,22 @@ class VisionPipelineTool(BaseTool):
 
     # **Annotated** fields to override the BaseTool defaults
     name: str = "create_and_run_vision_pipeline"
+    description: str = "Creates a vision pipeline JSON and runs it."
     args_schema: type = VisionPipelineInput
 
     # A private attr to hold your VisionPipeline instance
-    _vision_functions: VisionPipeline = PrivateAttr()
+    _node: Node = PrivateAttr()
     _vision_handler: VisionHandler = PrivateAttr()
 
-    def __init__(self, vision_functions: VisionPipeline, vision_handler: VisionHandler):
-        # 1) build your dynamic description
-        funcs = vision_functions.return_available_functions_dict()
-        lines = [
-            "Creates a vision‑pipeline JSON and runs it.",
-            "Input `pipeline_steps` is a list of dicts, each mapping a function name → its params.",
-            "",
-            "**Available vision functions:**"
-        ]
-        # for fn_name, params in funcs.items():
-        #     param_list = ", ".join(f"{k} ({type(v).__name__})" for k, v in params.items())
-        #     lines.append(f"- **{fn_name}**: {param_list}")
-        # description = "\n".join(lines)
+    def __init__(self, node: Node):
+        super().__init__()
+        self._node = node
+        self._vision_handler = VisionHandler(self._node)
 
-
-        description = self._vision_handler.return_available_function_names()
-
-        # 2) initialize the BaseTool with annotated fields
-        super().__init__(description=description)
-
-        self._vision_handler = vision_handler
-
-        # 3) stash the VisionPipeline for _run()
-        self._vision_functions = vision_functions
-
+        self._node.get_logger().info(f"VisionPipelineTool initialized with node: {self._node.get_name()}")
 
 
     def _run(self, pipeline_steps: List[Dict[str, Any]], process_name: str) -> str:
-        try:
-            self._vision_handler.vision_node.get_logger().info(f"Running vision pipeline with steps: {pipeline_steps} and process name: {process_name}")
-        except Exception as e:
-            self._vision_handler.vision_node.get_logger().error(f"Error running vision pipeline: {e}")
 
         process_file_content = {
                 "vision_process_name": process_name,

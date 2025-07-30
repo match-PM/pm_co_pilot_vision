@@ -18,6 +18,7 @@ from pm_vision_app.py_modules.vision_pipeline_class import VisionPipeline
 from .tools.execute_vision_pipeline import VisionPipelineTool
 from .tools.vision_tools import Tools
 from pm_co_pilot_vision.utils.vision_functions import VisionHandler
+from ament_index_python.packages import get_package_share_directory
 
 class Agent:
     """
@@ -31,82 +32,65 @@ class Agent:
         self.node = node
         self.node.get_logger().info("Agent __init__ called.")
 
-        self.llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo")
+        try:
+            path = get_package_share_directory("pm_co_pilot_vision")
+            prompt = path + '/prompts.yaml'
+            with open(prompt, 'r') as file:
+                config_data = yaml.safe_load(file)
+                tool = config_data['agent']
+                self.model = tool['model']
+                self.model_provider = tool['model_provider']
+                self.temperature = tool['temperature']
+                self.system_prompt = tool['system_prompt']
+        except Exception as e:
+            self.node.get_logger().error(f"Error loading prompts.yaml: {e}")
+            raise
+
+        self.llm = ChatOpenAI(temperature=self.temperature, model=self.model)
+
         self.node.get_logger().info("LLM initialized.")
 
-        vision_pipeline_config_path = "/home/match-mover/Documents/ros2_ws/src/pm_vision_manager/pm_vision_manager/vision_functions"
-
-        self.vision_functions = VisionPipeline(vision_pipeline_config_path)
-
-        self.vision_handler = VisionHandler(node)
+        self.vision_functions = VisionHandler(self.node)
+        self.available_functions = self.vision_functions.return_available_function_names()
 
         self.vision_tools = Tools(node)
-        self.node.get_logger().info("Vision tools initialized.")
 
         try:
-            self.tools = [VisionPipelineTool(vision_functions=self.vision_functions, vision_handler=self.vision_handler), 
-                        self.vision_tools.get_function_parameters_tool]
+            self.tools = [
+                VisionPipelineTool(node=self.node),
+                self.vision_tools.get_function_parameters_tool,
+                self.vision_tools.get_available_functions_tool
+            ]
         except Exception as e:
-            self.node.get_logger().error(f"Error initializing tools: {e}")
+            self.node.get_logger().error(f"Error initializing tools: {e}")        
+
+        self.node.get_logger().info("Vision tools initialized.")
 
     def create_vision_pipeline_agent(self):
         self.node.get_logger().info("create_vision_pipeline_agent called.")
         llm = self.llm
-
-        if not hasattr(self, 'tools') or not self.tools:
-            self.node.get_logger().error("Error: self.tools not initialized or is empty. Agent cannot be created.")
-            # You might want to raise an error or handle this case appropriately
-            raise AttributeError("'Agent' object has no attribute 'tools' or tools are not properly initialized.")
-
 
         tools = self.tools
 
         # Define the prompt for the agent
         prompt = ChatPromptTemplate.from_messages(
             [
-                # 1) Role & goal
-                ("system", "You are an expert vision‑pipeline builder. Your goal is to translate user requests into a sequence of vision function calls."),
+            # 1) Role & goal
+            ("system", self.system_prompt),
 
-                # 2) Structure example (note all braces doubled)
-                ("system", "For reference, a two‑step grayscale+threshold pipeline should look like:\n"
-                        "```json\n"
-                        "{{\n"
-                        "  \"BGR2GRAY\": {{ \"active\": true }},\n"
-                        "  \"Threshold\": {{ \"active\": true, \"thresh\": 128, \"maxval\": 255, \"type\": \"THRESH_BINARY\" }}\n"
-                        "}}\n"
-                        "```"),
+            ("system", "Available vision functions:"),
+            ("system", self.available_functions),
 
-                # 3) Directory context
-                ("system", "All process JSONs will be written to `/home/match-mover/Documents/`."),
-                
-                # 4) JSON‑tool reminder
-                ("system", "You have access to the `create_and_run_vision_pipeline` tool. **When** you call it, you **must** output **only** a JSON object with exactly two keys:\n"
-                        "1. `pipeline_steps` — a **list** of step‑dicts, each mapping a function name → its params (always include `\"active\": true`).\n"
-                        "2. `process_name` — a **string** to name this pipeline run.\n"
-                        "No extra fields, no natural‑language—**just** the JSON."),
+            # History & user input
+            MessagesPlaceholder(variable_name="chat_history"),
+            ("user", "{input}"),
 
-                # 5) Full valid‑call example (also escaped)
-                ("system", "Here’s an example of a **complete valid** tool invocation:\n"
-                        "```json\n"
-                        "{{\n"
-                        "  \"pipeline_steps\": [\n"
-                        "    {{ \"CircleDetection\": {{ \"active\": true, \"draw_circles\": false, \"mode\": \"default\", \"minRadius\": 0, \"maxRadius\": 0 }} }},\n"
-                        "    {{ \"Threshold\":       {{ \"active\": true, \"thresh\": 128, \"maxval\": 255, \"type\": \"THRESH_BINARY\" }} }}\n"
-                        "  ],\n"
-                        "  \"process_name\": \"circle_detection_threshold\"\n"
-                        "}}\n"
-                        "```"),
-
-                # 6) History & user input
-                MessagesPlaceholder(variable_name="chat_history"),
-                ("user", "{input}"),
-
-                # 7) Scratchpad
-                MessagesPlaceholder(variable_name="agent_scratchpad"),
+            # Scratchpad
+            MessagesPlaceholder(variable_name="agent_scratchpad"),
             ]
         )
 
-        self.node.get_logger().info("Prompt defined.")
+        self.node.get_logger().info(f"Prompt defined. {prompt.messages}")
 
         # Create the agent
         agent = create_openai_tools_agent(llm, tools, prompt)

@@ -18,7 +18,8 @@ class PmCoPilotVisionNode(Node):
             agent = Agent(self)
             agent_executor = agent.create_vision_pipeline_agent()
             messages = agent_executor.invoke({
-                "input": "Set a threshold of 128 and run the pipeline. Give the user a response about the result.",
+                # "input": "Set a threshold of 128 and run the pipeline. Give the user a response about the result.",
+                "input": "what funtions are available? Return the response",
                 "chat_history": []
             })
             response = messages['output']
