@@ -16,7 +16,7 @@ import getpass
 
 from pm_vision_app.py_modules.vision_pipeline_class import VisionPipeline
 from pm_vision_app.py_modules.vision_functions_loader import VisionFunctionsLoader
-from pm_co_pilot_vision.co_pilot_modules.ros2_framework.vision_functions import VisionFunctions as VisionFunctionsROS2
+from pm_co_pilot_vision.utils.vision_functions import VisionHandler
 
 
 class VisionPipelineInput(BaseModel):
@@ -28,7 +28,7 @@ class VisionPipelineInput(BaseModel):
     )
 
 class VisionPipelineTool(BaseTool):
-    # allow arbitrary types so we can stash our VisionPipeline
+    # allow arbitrary types to stash the VisionPipeline
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     # **Annotated** fields to override the BaseTool defaults
@@ -37,8 +37,9 @@ class VisionPipelineTool(BaseTool):
 
     # A private attr to hold your VisionPipeline instance
     _vision_functions: VisionPipeline = PrivateAttr()
+    _vision_handler: VisionHandler = PrivateAttr()
 
-    def __init__(self, vision_functions: VisionPipeline, node:Node):
+    def __init__(self, vision_functions: VisionPipeline, vision_handler: VisionHandler):
         # 1) build your dynamic description
         funcs = vision_functions.return_available_functions_dict()
         lines = [
@@ -47,26 +48,34 @@ class VisionPipelineTool(BaseTool):
             "",
             "**Available vision functions:**"
         ]
-        for fn_name, params in funcs.items():
-            param_list = ", ".join(f"{k} ({type(v).__name__})" for k, v in params.items())
-            lines.append(f"- **{fn_name}**: {param_list}")
-        description = "\n".join(lines)
+        # for fn_name, params in funcs.items():
+        #     param_list = ", ".join(f"{k} ({type(v).__name__})" for k, v in params.items())
+        #     lines.append(f"- **{fn_name}**: {param_list}")
+        # description = "\n".join(lines)
 
-        print(f"VisionPipelineTool initialized with description: {description}")
+
+        description = self._vision_handler.return_available_function_names()
 
         # 2) initialize the BaseTool with annotated fields
         super().__init__(description=description)
 
+        self._vision_handler = vision_handler
+
         # 3) stash the VisionPipeline for _run()
         self._vision_functions = vision_functions
 
-        self._vision_functions_ros2 = VisionFunctionsROS2(node)
+
 
     def _run(self, pipeline_steps: List[Dict[str, Any]], process_name: str) -> str:
+        try:
+            self._vision_handler.vision_node.get_logger().info(f"Running vision pipeline with steps: {pipeline_steps} and process name: {process_name}")
+        except Exception as e:
+            self._vision_handler.vision_node.get_logger().error(f"Error running vision pipeline: {e}")
+
         process_file_content = {
-            "vision_process_name": process_name,
-            "process creation": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
-            "vision_pipeline": pipeline_steps
+                "vision_process_name": process_name,
+                "process creation": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+                "vision_pipeline": pipeline_steps
         }
 
         process_file_name = f"{process_name}.json"
@@ -76,24 +85,21 @@ class VisionPipelineTool(BaseTool):
 
         with open(process_file_path, 'w') as f:
             json.dump(process_file_content, f, indent=4)
-        self._vision_functions_ros2.vision_node.get_logger().info(f"Process file created at: {process_file_path}")
 
+        return True
         # Execute the vision pipeline
-        try:
-            result_dict, message = self._vision_functions_ros2.process_image(
-                image_name="cube.png",  # Replace with actual image name
-                process_filename=process_file_name
-            )
-        except Exception as e:
-            self._vision_functions_ros2.vision_node.get_logger().error(f"Error processing image: {e}")
-            return f"Error processing image: {e}"
+        # try:
+        #     result_dict, message = self._vision_handler.process_image(
+        #         image_name="cube.png",  # Replace with actual image name
+        #         process_filename=process_file_name
+        #     )
+        # except Exception as e:
+        #     return f"Error processing image: {e}"
 
-        self._vision_functions_ros2.vision_node.get_logger().info(f"Vision pipeline executed with result: {result_dict}")
-
-        if result_dict is None:
-            return f"Vision pipeline '{process_name}' executed with error: {message}"
-        else:
-            return f"Vision pipeline '{process_name}' executed successfully! Results: {result_dict}"
+        # if result_dict is None:
+        #     return f"Vision pipeline '{process_name}' executed with error: {message}"
+        # else:
+        #     return f"Vision pipeline '{process_name}' executed successfully! Results: {result_dict}"
 
     def _arun(self, *args: Any, **kwargs: Any) -> Any:
         raise NotImplementedError("This tool does not support async")

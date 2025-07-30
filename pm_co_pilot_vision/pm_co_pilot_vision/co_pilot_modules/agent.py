@@ -16,6 +16,8 @@ from pathlib import Path
 import getpass
 from pm_vision_app.py_modules.vision_pipeline_class import VisionPipeline
 from .tools.execute_vision_pipeline import VisionPipelineTool
+from .tools.vision_tools import Tools
+from pm_co_pilot_vision.utils.vision_functions import VisionHandler
 
 class Agent:
     """
@@ -36,7 +38,16 @@ class Agent:
 
         self.vision_functions = VisionPipeline(vision_pipeline_config_path)
 
-        self.tools = [VisionPipelineTool(vision_functions=self.vision_functions, node=self.node)]
+        self.vision_handler = VisionHandler(node)
+
+        self.vision_tools = Tools(node)
+        self.node.get_logger().info("Vision tools initialized.")
+
+        try:
+            self.tools = [VisionPipelineTool(vision_functions=self.vision_functions, vision_handler=self.vision_handler), 
+                        self.vision_tools.get_function_parameters_tool]
+        except Exception as e:
+            self.node.get_logger().error(f"Error initializing tools: {e}")
 
     def create_vision_pipeline_agent(self):
         self.node.get_logger().info("create_vision_pipeline_agent called.")

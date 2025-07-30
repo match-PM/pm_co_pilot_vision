@@ -9,19 +9,6 @@ from langchain.agents import AgentExecutor
 from pm_co_pilot_vision.co_pilot_modules.agent import Agent
 
 
-# def main():
-#     try:
-#         agent = Agent()
-#         agent_executor = agent.create_vision_pipeline_agent()
-
-#         agent_executor.invoke({
-#             "input": "I need to detect circles in the image and then threshold the result.",
-#             "chat_history": []
-#         })
-#     except AttributeError as e:
-#         print(f"Caught AttributeError: {e}")
-#     except Exception as e:
-#         print(f"Caught general exception: {e}")
 
 class PmCoPilotVisionNode(Node):
 
@@ -30,11 +17,12 @@ class PmCoPilotVisionNode(Node):
         try:
             agent = Agent(self)
             agent_executor = agent.create_vision_pipeline_agent()
-
-            agent_executor.invoke({
-                "input": "Set a threshold of 128. Adapt the pipeline if an error occurs.",
+            messages = agent_executor.invoke({
+                "input": "Set a threshold of 128 and run the pipeline. Give the user a response about the result.",
                 "chat_history": []
             })
+            response = messages['output']
+            self.get_logger().info(f"Agent response: {response}")
         except AttributeError as e:
             print(f"Caught AttributeError: {e}")
         except Exception as e:
