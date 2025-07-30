@@ -7,6 +7,7 @@ import sys
 
 from langchain.agents import AgentExecutor
 from pm_co_pilot_vision.co_pilot_modules.agent import Agent
+from pm_co_pilot_vision.utils.vision_functions import VisionHandler
 
 
 
@@ -14,20 +15,13 @@ class PmCoPilotVisionNode(Node):
 
     def __init__(self):
         super().__init__('pm_co_pilot_vision_node')
-        try:
-            agent = Agent(self)
-            agent_executor = agent.create_vision_pipeline_agent()
-            messages = agent_executor.invoke({
-                # "input": "Set a threshold of 128 and run the pipeline. Give the user a response about the result.",
-                "input": "what funtions are available? Return the response",
-                "chat_history": []
-            })
-            response = messages['output']
-            self.get_logger().info(f"Agent response: {response}")
-        except AttributeError as e:
-            print(f"Caught AttributeError: {e}")
-        except Exception as e:
-            print(f"Caught general exception: {e}")
+        self.agent = Agent(self)
+
+        response = self.agent.handle_user_input("build and run a pipeline with a threshold of 128 and CircleDetection")
+        self.get_logger().info(f"Agent response: {response}")
+
+
+
 
 def main(args=None):
     rclpy.init(args=args)

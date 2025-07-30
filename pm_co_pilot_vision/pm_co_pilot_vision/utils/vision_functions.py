@@ -34,7 +34,7 @@ class VisionHandler():
         """
         Returns a list of available vision function names.
         """
-        return json.dumps(self.function_names)
+        return json.dumps(self.function_names, indent=2, separators=(",", ":"))
 
     def return_function_parameters(self, function_name: str):
         """
@@ -46,7 +46,12 @@ class VisionHandler():
         function = self.vision_functions
         for func in function:
             if func['function_name'] == function_name:
-                return json.dumps(func.get('params', {}))
+                result = {
+                    "description": func.get('description', ''),
+                    "params": func.get('params', [])
+                }
+                return json.dumps(result)
+            
         return json.dumps({})
 
     def process_image(self, image_name: str, process_filename: str) -> tuple:

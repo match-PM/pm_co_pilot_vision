@@ -1,9 +1,20 @@
 from langchain.tools import Tool
 from rclpy.node import Node
+from pydantic import BaseModel, Field 
+from typing import List, Dict, Any
 
 from pm_co_pilot_vision.utils.vision_functions import VisionHandler
 
 import json
+
+# Define an empty Pydantic model for tools with no arguments
+class NoArgs(BaseModel):
+    """No arguments expected."""
+    pass
+
+# Define a Pydantic model for get_function_parameters (if you want to be explicit)
+class GetFunctionParametersArgs(BaseModel):
+    function_names: List[str] = Field(description="List of the vision functions to get description and parameters for.")
 
 class Tools:
     """
@@ -19,16 +30,19 @@ class Tools:
         self.get_function_parameters_tool = Tool(
             name="get_function_parameters",
             func=self._get_function_parameters,
-            description="Get the parameters for a specific vision function."
+            description="Get the parameters and description for specific vision functions. Takes 'function_names' as input.",
+            args_schema=GetFunctionParametersArgs # Specify the schema for parameters
         )
 
         self.get_available_functions_tool = Tool(
             name="get_available_functions_names",
-            func=self.get_available_functions_names,
-            description="Get the names of all available vision functions."
+            func=self._get_available_functions_names,
+            description="Get the names of all available vision functions. This tool takes no arguments.", # Clarify in description
+            args_schema=NoArgs # Explicitly state no arguments
         )
     
-    def get_available_functions_names(self) -> str:
+
+    def _get_available_functions_names(self) -> str:
         """
         Get the names of all available vision functions.
         
@@ -39,25 +53,25 @@ class Tools:
         function_names = self._vision_handler.return_available_function_names()
         
         if not function_names:
-            self.node.get_logger().error("No available function names found.")
+            # self.node.get_logger().error("No available function names found.")
             return json.dumps({"error": "No available function names found."})
         
-        return json.dumps(function_names, indent=2)
+        return function_names
     
 
-    def _get_function_parameters(self, function_name: str) -> str:
+    def _get_function_parameters(self, function_names: List[str]) -> str:
         """
-        Get the parameters for a specific vision function.
-        
-        :param function_name: The name of the vision function.
-        :return: A JSON string containing the parameters for the function.
+        Get the description and parameters for the requested vision functions.
+
+        :param function_names: A list of vision function names.
+        :return: A JSON string containing the parameters for the functions.
         """
-        self.node.get_logger().info(f"Getting parameters for function: {function_name}")
-        
-        params = self._vision_handler.return_function_parameters(function_name)
-        
-        if not params:
-            self.node.get_logger().error(f"No parameters found for function: {function_name}")
-            return json.dumps({"error": "Function not found or has no parameters."})
-        
+        self.node.get_logger().info(f"Getting parameters for functions: {function_names}")
+
+        params = {}
+        for function_name in function_names:
+            function_params = self._vision_handler.return_function_parameters(function_name)
+            if function_params:
+                params[function_name] = function_params
+
         return json.dumps(params, indent=2)

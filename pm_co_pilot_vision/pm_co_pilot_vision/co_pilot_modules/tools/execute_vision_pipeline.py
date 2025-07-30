@@ -49,7 +49,7 @@ class VisionPipelineTool(BaseTool):
 
 
     def _run(self, pipeline_steps: List[Dict[str, Any]], process_name: str) -> str:
-
+        self._node.get_logger().info(f"Creating and running vision pipeline: {process_name}")
         process_file_content = {
                 "vision_process_name": process_name,
                 "process creation": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
@@ -64,20 +64,19 @@ class VisionPipelineTool(BaseTool):
         with open(process_file_path, 'w') as f:
             json.dump(process_file_content, f, indent=4)
 
-        return True
         # Execute the vision pipeline
-        # try:
-        #     result_dict, message = self._vision_handler.process_image(
-        #         image_name="cube.png",  # Replace with actual image name
-        #         process_filename=process_file_name
-        #     )
-        # except Exception as e:
-        #     return f"Error processing image: {e}"
+        try:
+            result_dict, message = self._vision_handler.process_image(
+                image_name="cube.png",  # Replace with actual image name
+                process_filename=process_file_name
+            )
+        except Exception as e:
+            return f"Error processing image: {e}"
 
-        # if result_dict is None:
-        #     return f"Vision pipeline '{process_name}' executed with error: {message}"
-        # else:
-        #     return f"Vision pipeline '{process_name}' executed successfully! Results: {result_dict}"
+        if result_dict is None:
+            return f"Vision pipeline '{process_name}' executed with error: {message}"
+        else:
+            return f"Vision pipeline '{process_name}' executed successfully! Results: {result_dict}"
 
     def _arun(self, *args: Any, **kwargs: Any) -> Any:
         raise NotImplementedError("This tool does not support async")

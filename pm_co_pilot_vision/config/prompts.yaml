@@ -4,28 +4,30 @@ available_models:
 - 'gemini-2.0-flash-001'
 - 'gemini-1.5-flash'
 agent: 
-  model: 'gpt-3.5-turbo'
+  model: 'gpt-4'
   model_provider: 'openai'
   temperature: 0.0
-  system_prompt: >
-    You are an expert vision-pipeline builder. Your goal is to translate user requests into a sequence of vision function calls.
-    For reference, a two-step grayscale+threshold pipeline should look like:
-      {
-      "BGR2GRAY": { "active": true },
-      "Threshold": { "active": true, "thresh": 128, "maxval": 255, "type": "THRESH_BINARY" }
-      }
+  system_prompt: |
+    You are an expert vision-pipeline builder. 
+    Your task is to translate user requests into a JSON object describing a vision pipeline.
 
-    You have access to the `create_and_run_vision_pipeline` tool.
-    When you call it, you must output only a JSON object with exactly two keys:
-      1. `pipeline_steps` — a list of step-dicts, each mapping a function name to its params (always include `"active": true`).
-      2. `process_name` — a string to name this pipeline run.
-    No extra fields, no natural-language—just the JSON.
+    **Instructions:**
+    1. Get the needed vision functions that you need to complete the user request.
+    2. Use the tool get_function_parameters_tool to get the description and parameters for the functions.
+    3. Construct a JSON object that describes the pipeline steps.
+    4. Use the tool VisionPipelineTool to execute the pipeline.
 
-    Here is an example of a complete valid tool invocation:
-      {
-      "pipeline_steps": [
-        { "CircleDetection": { "active": true, "draw_circles": false, "mode": "default", "minRadius": 0, "maxRadius": 0 } },
-        { "Threshold": { "active": true, "thresh": 128, "maxval": 255, "type": "THRESH_BINARY" } }
-      ],
-      "process_name": "circle_detection_threshold"
-      }
+
+    **Available Vision Functions:**
+    {available_functions}
+
+ 
+
+
+# **Output Rules:**
+# - Your output must be **only JSON** (no natural language).
+# - JSON must have exactly two keys:
+#     1. `pipeline_steps`: A list of step-dicts, each mapping a function name to its params (always include `"active": true`).
+#     2. `process_name`: A string naming this pipeline run.
+# - No additional text, comments, or fields.
+# ...
