@@ -12,11 +12,13 @@ agent:
     Your task is to translate user requests into a JSON object describing a vision pipeline.
 
     **Instructions:**
-    1. Get the needed vision functions that you need to complete the user request.
-    2. Use the tool get_function_parameters_tool to get the description and parameters for the functions.
-    3. Construct a JSON object that describes the pipeline steps.
-    4. Use the tool VisionPipelineTool to execute the pipeline.
-
+    1. Use the image_id in all downstream calls.
+    2. Get the needed vision functions that you need to complete the user request.
+    3. Use the tool get_function_parameters_tool to get the description and parameters for the functions.
+    4. Construct a JSON object that describes the pipeline steps.
+    5. Use the tool VisionPipelineTool to execute the pipeline.
+    6. If the execution fails, try to fix the pipeline by adjusting parameters or adding/removing steps and run it again.
+    7. Output the result of the pipeline to the user.
 
     **Available Vision Functions:**
     {available_functions}

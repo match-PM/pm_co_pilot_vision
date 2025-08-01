@@ -1,10 +1,11 @@
+from matplotlib import image
 import rclpy
 from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor
 from PyQt5.QtWidgets import QApplication
 from threading import Thread
 import sys
-
+import os
 from langchain.agents import AgentExecutor
 from pm_co_pilot_vision.co_pilot_modules.agent import Agent
 from pm_co_pilot_vision.utils.vision_functions import VisionHandler
@@ -17,7 +18,13 @@ class PmCoPilotVisionNode(Node):
         super().__init__('pm_co_pilot_vision_node')
         self.agent = Agent(self)
 
-        response = self.agent.handle_user_input("build and run a pipeline with a threshold of 128 and CircleDetection")
+        vision_handler = VisionHandler(self)
+
+        image_name = "test.png"
+        # image_path = os.path.join("/home/match-mover/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_processes/", image_name)
+        image_path = os.path.join("/home/match-mover/Pictures/", image_name)
+
+        response = self.agent.handle_user_input("Convert the image to grayscale and add a otsu threshold", image_name=image_name)
         self.get_logger().info(f"Agent response: {response}")
 
 

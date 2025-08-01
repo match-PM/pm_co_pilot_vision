@@ -26,9 +26,10 @@ class VisionHandler():
 
         # Define dummy filenames for testing
         self.process_filename = "test_pipeline.json" # Replace with actual path
-        self.camera_config_filename = "pm_robot_top_cam_1_Unity.yaml" # Replace with actual path
-        self.image_path = "/home/match-mover/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_image_db/test_pipeline/"
-        self.image_name = "target.png"
+        self.camera_config_filename = "pm_robot_basler_top_cam_1.yaml" # Replace with actual path
+        # self.image_path = "/home/match-mover/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_image_db/test_pipeline/"
+        self.image_path = "/home/match-mover/Pictures/"
+        self.image_name = "test.png"
 
     def return_available_function_names(self) -> str:
         """
@@ -54,7 +55,8 @@ class VisionHandler():
             
         return json.dumps({})
 
-    def process_image(self, image_name: str, process_filename: str) -> tuple:
+
+    def process_image(self, image_id: str, process_filename: str) -> tuple:
         """
         Process the given image using the defined pipeline.
         
@@ -62,6 +64,7 @@ class VisionHandler():
         :return: The processed image and any results from the processing.
         """
 
+        image_name = "test.png"
         # load image as image:np.ndarray
         image = cv2.imread(f"{self.image_path}/{image_name}")
 

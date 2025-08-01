@@ -26,6 +26,9 @@ class VisionPipelineInput(BaseModel):
     process_name: str = Field(
         "default_pipeline", description="A descriptive name for the vision pipeline process file."
     )
+    image_id: str = Field(
+        ..., description="The unique identifier for the image to be processed."
+    )
 
 class VisionPipelineTool(BaseTool):
     # allow arbitrary types to stash the VisionPipeline
@@ -48,7 +51,7 @@ class VisionPipelineTool(BaseTool):
         self._node.get_logger().info(f"VisionPipelineTool initialized with node: {self._node.get_name()}")
 
 
-    def _run(self, pipeline_steps: List[Dict[str, Any]], process_name: str) -> str:
+    def _run(self, pipeline_steps: List[Dict[str, Any]], process_name: str, image_id: str) -> str:
         self._node.get_logger().info(f"Creating and running vision pipeline: {process_name}")
         process_file_content = {
                 "vision_process_name": process_name,
@@ -57,7 +60,8 @@ class VisionPipelineTool(BaseTool):
         }
 
         process_file_name = f"{process_name}.json"
-        process_file_path = os.path.join("/home/match-mover/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_processes/", process_file_name)
+        # process_file_path = os.path.join("/home/match-mover/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_processes/", process_file_name)
+        process_file_path = os.path.join("/home/match-mover/Documents/ros2_ws/src/pm_vision_manager/pm_vision_manager/vision_processes/", process_file_name)
 
         # os.makedirs(vision_pipeline.vision_process_libary_path, exist_ok=True)
 
@@ -67,7 +71,7 @@ class VisionPipelineTool(BaseTool):
         # Execute the vision pipeline
         try:
             result_dict, message = self._vision_handler.process_image(
-                image_name="cube.png",  # Replace with actual image name
+                image_id=image_id, 
                 process_filename=process_file_name
             )
         except Exception as e:
