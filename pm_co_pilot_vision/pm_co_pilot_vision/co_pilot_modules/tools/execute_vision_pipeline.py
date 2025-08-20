@@ -26,52 +26,6 @@ class VisionPipelineInput(BaseModel):
     process_name: str = Field(
         "default_pipeline", description="A descriptive name for the vision pipeline process file."
     )
-    image_id: str = Field(
-        ..., description="The unique identifier for the image to be processed."
-    )
-
-    #     # 1) Normalize LLM-shaped steps into the desired {FunctionName: {...}} shape.
-    # @field_validator("pipeline_steps", mode="before")
-    # @classmethod
-    # def normalize_steps(cls, v):
-    #     if not isinstance(v, list):
-    #         raise TypeError("pipeline_steps must be a list")
-
-    #     normalized = []
-    #     for step in v:
-    #         # already correct: exactly one key, and not the 'function_name' wrapper
-    #         if isinstance(step, dict) and len(step) == 1 and "function_name" not in step:
-    #             normalized.append(step)
-    #             continue
-
-    #         # LLM-friendly shape: {'function_name': 'X', 'params': {...}}
-    #         if isinstance(step, dict) and "function_name" in step and "params" in step:
-    #             fn = step["function_name"]
-    #             params = step["params"]
-    #             if not isinstance(fn, str) or not isinstance(params, dict):
-    #                 raise ValueError(f"Invalid function_name/params types in step: {step!r}")
-    #             normalized.append({fn: params})
-    #             continue
-
-    #         raise ValueError(f"Invalid step format: {step!r}")
-
-    #     return normalized
-
-    # # 2) Validate structure after normalization.
-    # @field_validator("pipeline_steps")
-    # @classmethod
-    # def validate_steps(cls, v: List[Dict[str, Any]]):
-    #     for step in v:
-    #         if not isinstance(step, dict) or len(step) != 1:
-    #             raise ValueError(f"Each step must be a single-key dict, got: {step!r}")
-    #         (fn, params), = step.items()  # unpack the single item
-    #         if not isinstance(fn, str):
-    #             raise ValueError(f"Function name must be a string, got: {type(fn).__name__}")
-    #         if not isinstance(params, dict):
-    #             raise ValueError(f"Params for {fn} must be an object, got: {type(params).__name__}")
-    #         if "active" not in params:
-    #             raise ValueError(f"Step '{fn}' is missing required 'active' flag")
-    #     return v
 
 class VisionPipelineTool(BaseTool):
     # allow arbitrary types to stash the VisionPipeline
@@ -94,7 +48,7 @@ class VisionPipelineTool(BaseTool):
         self._node.get_logger().info(f"VisionPipelineTool initialized with node: {self._node.get_name()}")
 
 
-    def _run(self, pipeline_steps: List[Dict[str, Any]], process_name: str, image_id: str) -> str:
+    def _run(self, pipeline_steps: List[Dict[str, Any]], process_name: str) -> str:
         self._node.get_logger().info(f"Creating and running vision pipeline: {process_name}")
         
         self._node.get_logger().info(f"Pipeline steps: {pipeline_steps}")
@@ -122,7 +76,6 @@ class VisionPipelineTool(BaseTool):
         # Execute the vision pipeline
         try:
             result_dict, message = self._vision_handler.process_image(
-                image_name=image_id, 
                 process_filename=process_file_name
             )
         except Exception as e:
@@ -158,6 +111,8 @@ class VisionPipelineTool(BaseTool):
                 if "function_name" in item:
                     function_key = "function_name"
                 elif "function" in item:
+                    function_key = "function"
+                elif "name" in item:
                     function_key = "function"
                 # Accept both "params" or "parameters"
                 params_key = None

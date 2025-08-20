@@ -16,8 +16,9 @@ from pm_vision_manager.va_py_modules.vision_pipline_processing import process_im
 from pm_vision_manager.va_py_modules.vision_assistant_class import VisionProcessClass
 
 class VisionHandler():
-    def __init__(self, vision_node: Node, image_path: str, image_processes_path: str):
+    def __init__(self, vision_node: Node, image_name: str, image_path: str, image_processes_path: str):
         self.vision_node = vision_node
+        self.image_name = image_name
         self.image_path = image_path
         self.image_processes_path = image_processes_path
 
@@ -55,7 +56,8 @@ class VisionHandler():
             self.vision_node.get_logger().error(f"Image path does not exist: {image_path}")
             return None
         
-        image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+        # load image as greyscale and binary
+        image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE | cv2.IMREAD_UNCHANGED)
 
         # Compress the image for testing (resize to smaller size)
         image = cv2.resize(image, (0, 0), fx=0.1, fy=0.1, interpolation=cv2.INTER_AREA)
@@ -113,7 +115,7 @@ class VisionHandler():
 
         return json.dumps(facts)
 
-    def process_image(self, image_name: str, image_path: str, process_filename: str) -> tuple:
+    def process_image(self, process_filename: str) -> tuple:
         """
         Process the given image using the defined pipeline.
         
@@ -122,7 +124,7 @@ class VisionHandler():
         """
 
         # load image as image:np.ndarray
-        image = self.load_image(image_path=image_path)
+        image = self.load_image(image_name=self.image_name)
 
         vision_processor = VisionProcessClass(
             vision_node=self.vision_node,
@@ -147,7 +149,7 @@ class VisionHandler():
             return None, error_msg
 
 
-        vision_processor.image_processing_handler.set_image_metatdata(vision_processor.process_db_path,image_name)
+        vision_processor.image_processing_handler.set_image_metatdata(vision_processor.process_db_path,self.image_name)
         vision_processor.image_processing_handler.set_initial_image(image)
 
         #display_image = process_image(self, image, self.process_pipeline_list)
@@ -159,7 +161,7 @@ class VisionHandler():
         self.vision_node.get_logger().info(f'vision result: {result_dict}')
 
         # save final image
-        image_name_processed = image_name.replace('.png', '_processed.png')
+        image_name_processed = self.image_name.replace('.png', '_processed.png')
         cv2.imwrite(f"{self.image_path}/final_{image_name_processed}", final_image)
 
         return result_dict, "Processing completed successfully."

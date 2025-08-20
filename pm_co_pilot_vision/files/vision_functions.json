@@ -668,7 +668,7 @@
 },
 {
   "function_name": "CornerDetection",
-  "description": "Detects the intersection point (corner) of two dominant lines selected from specified image edges. Uses Hough-based line detection and computes line intersection.",
+  "description": "Takes a binary image. Detects the intersection point (corner) of two dominant lines selected from specified image edges. Uses Hough-based line detection and computes line intersection.",
   "function_category": "Machine Vision",
   "params": [
     {

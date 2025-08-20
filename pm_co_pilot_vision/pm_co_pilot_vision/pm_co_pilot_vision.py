@@ -17,11 +17,15 @@ class PmCoPilotVisionNode(Node):
     def __init__(self):
         super().__init__('pm_co_pilot_vision_node')
 
+        # image_path = os.path.join("/home/match-mover/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_processes/", image_name)
+   
         image_path = "/home/match-mover/Documents/ros2_ws/src/pm_vision_manager/pm_vision_manager/vision_db/test_pipeline/"
         image_processes_path = "/home/match-mover/Documents/ros2_ws/src/pm_vision_manager/pm_vision_manager/vision_processes"
+        image_name = "cube.png"
 
         vision_handler = VisionHandler(
             vision_node=self, 
+            image_name=image_name,
             image_path=image_path, 
             image_processes_path=image_processes_path
         )
@@ -30,13 +34,10 @@ class PmCoPilotVisionNode(Node):
             self, 
             vision_handler=vision_handler
         )
-
-        image_name = "cube.png"
-        # image_path = os.path.join("/home/match-mover/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_processes/", image_name)
-        image_path = os.path.join("/home/match-mover/Pictures/", image_name)
-
-        user_prompt = "Convert the image to grayscale and add a threshold"
+        
+        # user_prompt = "Convert the image to grayscale and add a threshold"
         # user_prompt = "What do you see in the image?"
+        user_prompt = "detect the corner"
 
         response = self.agent.handle_user_input(user_prompt, image_name=image_name)
         self.get_logger().info(f"Agent response: {response}")
