@@ -2,7 +2,7 @@ import json
 import os
 from rclpy.node import Node
 from typing import List, Dict, Any, Type
-from pydantic import BaseModel, Field, ConfigDict, PrivateAttr
+from pydantic import BaseModel, Field, ConfigDict, PrivateAttr, field_validator
 from langchain.agents import AgentExecutor, create_openai_tools_agent
 from langchain_openai import ChatOpenAI
 from langchain.tools import BaseTool
@@ -22,13 +22,56 @@ from pm_co_pilot_vision.utils.vision_functions import VisionHandler
 class VisionPipelineInput(BaseModel):
     """Input for creating and running a vision pipeline."""
     pipeline_steps: List[Dict[str, Any]] = Field(
-        ..., description="A list of vision function dictionaries, each containing the function name as key and its parameters as values. Ensure 'active' is set for each step. Example: [{'BGR2GRAY': {'active': True}}, {'Threshold': {'active': True, 'thresh': 128, 'maxval': 255, 'type': 'THRESH_BINARY'}}]")
+        ..., description="A json of vision function dictionaries, each containing the function name as key and its parameters as values. Ensure 'active' is set for each step. Example: [{'BGR2GRAY': {'active': True}}, {'Threshold': {'active': True, 'thresh': 128, 'maxval': 255, 'type': 'THRESH_BINARY'}}]")
     process_name: str = Field(
         "default_pipeline", description="A descriptive name for the vision pipeline process file."
     )
     image_id: str = Field(
         ..., description="The unique identifier for the image to be processed."
     )
+
+    #     # 1) Normalize LLM-shaped steps into the desired {FunctionName: {...}} shape.
+    # @field_validator("pipeline_steps", mode="before")
+    # @classmethod
+    # def normalize_steps(cls, v):
+    #     if not isinstance(v, list):
+    #         raise TypeError("pipeline_steps must be a list")
+
+    #     normalized = []
+    #     for step in v:
+    #         # already correct: exactly one key, and not the 'function_name' wrapper
+    #         if isinstance(step, dict) and len(step) == 1 and "function_name" not in step:
+    #             normalized.append(step)
+    #             continue
+
+    #         # LLM-friendly shape: {'function_name': 'X', 'params': {...}}
+    #         if isinstance(step, dict) and "function_name" in step and "params" in step:
+    #             fn = step["function_name"]
+    #             params = step["params"]
+    #             if not isinstance(fn, str) or not isinstance(params, dict):
+    #                 raise ValueError(f"Invalid function_name/params types in step: {step!r}")
+    #             normalized.append({fn: params})
+    #             continue
+
+    #         raise ValueError(f"Invalid step format: {step!r}")
+
+    #     return normalized
+
+    # # 2) Validate structure after normalization.
+    # @field_validator("pipeline_steps")
+    # @classmethod
+    # def validate_steps(cls, v: List[Dict[str, Any]]):
+    #     for step in v:
+    #         if not isinstance(step, dict) or len(step) != 1:
+    #             raise ValueError(f"Each step must be a single-key dict, got: {step!r}")
+    #         (fn, params), = step.items()  # unpack the single item
+    #         if not isinstance(fn, str):
+    #             raise ValueError(f"Function name must be a string, got: {type(fn).__name__}")
+    #         if not isinstance(params, dict):
+    #             raise ValueError(f"Params for {fn} must be an object, got: {type(params).__name__}")
+    #         if "active" not in params:
+    #             raise ValueError(f"Step '{fn}' is missing required 'active' flag")
+    #     return v
 
 class VisionPipelineTool(BaseTool):
     # allow arbitrary types to stash the VisionPipeline
@@ -43,16 +86,23 @@ class VisionPipelineTool(BaseTool):
     _node: Node = PrivateAttr()
     _vision_handler: VisionHandler = PrivateAttr()
 
-    def __init__(self, node: Node):
+    def __init__(self, node: Node, vision_handler: VisionHandler):
         super().__init__()
         self._node = node
-        self._vision_handler = VisionHandler(self._node)
+        self._vision_handler = vision_handler
 
         self._node.get_logger().info(f"VisionPipelineTool initialized with node: {self._node.get_name()}")
 
 
     def _run(self, pipeline_steps: List[Dict[str, Any]], process_name: str, image_id: str) -> str:
         self._node.get_logger().info(f"Creating and running vision pipeline: {process_name}")
+        
+        self._node.get_logger().info(f"Pipeline steps: {pipeline_steps}")
+        # Normalize the pipeline steps
+        pipeline_steps = self.convert_function_list(pipeline_steps)
+        self._node.get_logger().info(f"Normalized pipeline steps: {pipeline_steps}")
+
+
         process_file_content = {
                 "vision_process_name": process_name,
                 "process creation": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
@@ -60,8 +110,9 @@ class VisionPipelineTool(BaseTool):
         }
 
         process_file_name = f"{process_name}.json"
+        process_file_path = os.path.join(self._vision_handler.image_processes_path, process_file_name)
         # process_file_path = os.path.join("/home/match-mover/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_processes/", process_file_name)
-        process_file_path = os.path.join("/home/match-mover/Documents/ros2_ws/src/pm_vision_manager/pm_vision_manager/vision_processes/", process_file_name)
+        # process_file_path = os.path.join("/home/match-mover/Documents/ros2_ws/src/pm_vision_manager/pm_vision_manager/vision_processes/", process_file_name)
 
         # os.makedirs(vision_pipeline.vision_process_libary_path, exist_ok=True)
 
@@ -71,16 +122,57 @@ class VisionPipelineTool(BaseTool):
         # Execute the vision pipeline
         try:
             result_dict, message = self._vision_handler.process_image(
-                image_id=image_id, 
+                image_name=image_id, 
                 process_filename=process_file_name
             )
         except Exception as e:
             return f"Error processing image: {e}"
 
         if result_dict is None:
-            return f"Vision pipeline '{process_name}' executed with error: {message}"
+            return f"Vision pipeline '{process_name}' error: {message}"
         else:
-            return f"Vision pipeline '{process_name}' executed successfully! Results: {result_dict}"
+            return f"Vision pipeline '{process_name}' Results: {result_dict}"
 
     def _arun(self, *args: Any, **kwargs: Any) -> Any:
         raise NotImplementedError("This tool does not support async")
+
+
+    def convert_function_list(self,input_list):
+        """
+        Converts a list of dictionaries from the format:
+        [{"function_name": "Name", "params": {...}}]
+        to:
+        [{"Name": {...}}]
+
+        Args:
+            input_list (list): The list of dictionaries to convert.
+
+        Returns:
+            list: The converted list of dictionaries.
+        """
+        converted_list = []
+        try:
+            for item in input_list:
+                # Accept both "function_name" or "function"
+                function_key = None
+                if "function_name" in item:
+                    function_key = "function_name"
+                elif "function" in item:
+                    function_key = "function"
+                # Accept both "params" or "parameters"
+                params_key = None
+                if "params" in item:
+                    params_key = "params"
+                elif "parameters" in item:
+                    params_key = "parameters"
+                if function_key and params_key:
+                    function_name = item[function_key]
+                    params = item[params_key]
+                    converted_list.append({function_name: params})
+                else:
+                    self._node.get_logger().error(f"Invalid item format: {item}")
+                    raise ValueError(f"Invalid item format: {item}")
+        except Exception as e:
+            self._node.get_logger().error(f"Error converting function list: {e}")
+            raise
+        return converted_list
