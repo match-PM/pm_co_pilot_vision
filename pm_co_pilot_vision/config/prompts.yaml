@@ -4,9 +4,10 @@ available_models:
 - 'gpt-4.1-nano'
 - 'gpt-4.1-mini'
 - 'gemini-2.0-flash-001'
+- 'gemini-2.5-flash'
 - 'gemini-1.5-flash'
 agent: 
-  model: 'gpt-4.1-mini'
+  model: 'gemini-2.5-flash'
   model_provider: 'openai'
   temperature: 0.0
   system_prompt: |
@@ -18,8 +19,13 @@ agent:
     2. Use the tool get_function_parameters_tool to get the description and parameters for the functions.
     3. Always use BGR2GRAY as the first step. Use Threshold with OTSU as the second step.
     4. Construct a JSON object that describes the pipeline steps.
+        - Use the provided Image facts when setting parameters.
+        - Use the function names and parameters exactly as provided. Set a value for every parameter.
     5. Use the tool VisionPipelineTool to execute the pipeline.
-    6. If the execution fails, try to fix the pipeline by adjusting parameters or adding/removing steps and run it again.
+    6. Analyse the result form the VisionPipelineTool.
+        - If the execution fails, try to fix the pipeline by adjusting parameters or adding/removing steps and run it again.
+        - If the result is empty, try to refine the pipeline by adjusting parameters or adding/removing steps and run it again.
+        - Analyse the process_debug to optizmize the pipeline.
     7. Output the result of the pipeline to the user.
 
     **Available Vision Functions:**

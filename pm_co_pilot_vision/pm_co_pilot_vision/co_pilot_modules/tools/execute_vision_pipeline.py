@@ -52,10 +52,14 @@ class VisionPipelineTool(BaseTool):
         self._node.get_logger().info(f"Creating and running vision pipeline: {process_name}")
         
         self._node.get_logger().info(f"Pipeline steps: {pipeline_steps}")
-        # Normalize the pipeline steps
-        pipeline_steps = self.convert_function_list(pipeline_steps)
-        self._node.get_logger().info(f"Normalized pipeline steps: {pipeline_steps}")
 
+        # Check if the pipeline steps are valid
+        if not self.check_pipeline_steps(pipeline_steps):
+            self._node.get_logger().error("Invalid pipeline steps format. Converting ...")
+            pipeline_steps = self.convert_function_list(pipeline_steps)
+            self._node.get_logger().info(f"Normalized pipeline steps: {pipeline_steps}")
+
+        self._node.get_logger().info(f"Pipeline steps: {pipeline_steps}")
 
         process_file_content = {
                 "vision_process_name": process_name,
@@ -86,8 +90,6 @@ class VisionPipelineTool(BaseTool):
         else:
             return f"Vision pipeline '{process_name}' Results: {result_dict}"
 
-    def _arun(self, *args: Any, **kwargs: Any) -> Any:
-        raise NotImplementedError("This tool does not support async")
 
 
     def convert_function_list(self,input_list):
@@ -131,3 +133,16 @@ class VisionPipelineTool(BaseTool):
             self._node.get_logger().error(f"Error converting function list: {e}")
             raise
         return converted_list
+    
+    def check_pipeline_steps(self, pipeline_steps: List[Dict[str, Any]]) -> bool:
+        """
+        Checks if the pipeline steps are valid.
+        The pipeline does not allow keys like 'function_name', 'function', or 'name' in the step dictionaries.
+        """
+        for step in pipeline_steps:
+            if not isinstance(step, dict):
+                return False
+            for key in step.keys():
+                if key in ['function_name', 'function', 'name']:
+                    return False
+        return True

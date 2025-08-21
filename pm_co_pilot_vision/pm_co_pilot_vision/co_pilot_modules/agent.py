@@ -102,7 +102,7 @@ class Agent:
 
         # Compute concise image facts once
         image_facts = self.vision_functions.compute_image_facts(image_name)
-        content_blocks.append({"type": "text", "text": f"Image facts (concise): {image_facts}"})
+        content_blocks.append({"type": "text", "text": f"Image facts: {image_facts}"})
 
         agent_executor = self.create_executor()
         response = agent_executor.invoke({"messages": [HumanMessage(content=content_blocks)]}, self.config)

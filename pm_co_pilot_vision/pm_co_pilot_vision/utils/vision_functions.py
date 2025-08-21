@@ -125,14 +125,14 @@ class VisionHandler():
 
         # load image as image:np.ndarray
         image = self.load_image(image_name=self.image_name)
-
+        
         vision_processor = VisionProcessClass(
             vision_node=self.vision_node,
             process_filename=process_filename,
             camera_config_filename=self.camera_config_filename,
-            launch_as_assistant=False, # Set as per your testing needs
+            launch_as_assistant=False, 
             process_UID='CoPilotVision',
-            run_cross_validation=False # Set as per your testing needs
+            run_cross_validation=False
         )
 
         vision_processor._load_process_file()
@@ -152,13 +152,22 @@ class VisionHandler():
         vision_processor.image_processing_handler.set_image_metatdata(vision_processor.process_db_path,self.image_name)
         vision_processor.image_processing_handler.set_initial_image(image)
 
-        #display_image = process_image(self, image, self.process_pipeline_list)
         display_image, vision_results = process_image(vision_processor.vision_node, vision_processor.image_processing_handler, vision_processor.process_pipeline_list)
-        final_image = vision_processor.image_processing_handler.get_final_image()
+        final_image = vision_processor.image_processing_handler.get_display_image()
 
-        result_dict = vision_processor.save_vision_results()
+        # result_dict = vision_processor.save_vision_results()
+        vision_result_dict = vision_processor.image_processing_handler.get_vision_response()
 
-        self.vision_node.get_logger().info(f'vision result: {result_dict}')
+        process_debug = vision_processor.image_processing_handler.get_vision_process_debug()
+
+        self.vision_node.get_logger().info(f'vision result: {vision_result_dict}')
+        self.vision_node.get_logger().info(f'process debug: {process_debug}')
+
+        # result_dict contains the vision_result_dict and process_debug
+        result_dict = {
+            "vision_result": vision_result_dict,
+            "process_debug": process_debug
+        }
 
         # save final image
         image_name_processed = self.image_name.replace('.png', '_processed.png')
@@ -174,7 +183,7 @@ class VisionHandler():
         return {
             "width": width,
             "height": height,
-            "pixel_size_microns": 2.2,
+            "pixel_size_microns": 0.22,
             "bit_depth": image.dtype.name
         }
 
