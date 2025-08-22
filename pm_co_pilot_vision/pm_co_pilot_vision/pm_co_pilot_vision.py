@@ -34,10 +34,6 @@ class PmCoPilotVisionNode(Node):
             self, 
             vision_handler=vision_handler
         )
-
-        # image = vision_handler._load_image(image_name=image_name, resize=True)
-        # new_image_name = f"processed_{image_name}"
-        # vision_handler._save_image(image, image_name=new_image_name)
         
         # user_prompt = "Convert the image to grayscale and add a threshold"
         # user_prompt = "What do you see in the image? Do not perform any operations on the image, just describe it."
