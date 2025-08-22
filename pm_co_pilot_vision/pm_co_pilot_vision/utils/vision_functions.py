@@ -16,6 +16,9 @@ from pm_vision_manager.va_py_modules.vision_pipline_processing import process_im
 from pm_vision_manager.va_py_modules.vision_assistant_class import VisionProcessClass
 
 class VisionHandler():
+
+    RESIZE_FACTOR = 0.1  # Resize factor for testing
+
     def __init__(self, vision_node: Node, image_name: str, image_path: str, image_processes_path: str):
         self.vision_node = vision_node
         self.image_name = image_name
@@ -37,42 +40,30 @@ class VisionHandler():
         
 
 
-    def path_to_data_url(self, image_name: str) -> str:
-        p = Path(self.image_path, image_name).expanduser().resolve()
-        mime, _ = mimetypes.guess_type(p.name)
-        mime = mime or "image/png"
-        b64 = base64.b64encode(p.read_bytes()).decode("utf-8")
+    def path_to_data_url(self, image_name: str, resize: bool) -> str:
+        """
+            Convert an image to a data URL. Use load_image with resize=True to compress the image.
+            :param image_name: Name of the image file.
+            :return: Data URL of the image.
+            """
+        image = self._load_image(image_name, resize=resize)
+        if image is None:
+            return ""
+        # Encode image as PNG in memory
+        success, buffer = cv2.imencode('.png', image)
+        if not success:
+            return ""
+        mime = "image/png"
+        b64 = base64.b64encode(buffer.tobytes()).decode("utf-8")
         return f"data:{mime};base64,{b64}"
 
-    def load_image(self, image_name: str) -> np.ndarray:
-        """
-        Load an image with a given name.
-        
-        :param image_name: Name of the image file.
-        :return: The loaded image as a numpy array.
-        """
-        image_path = Path(self.image_path, image_name).expanduser().resolve()
-        if not os.path.exists(image_path):
-            self.vision_node.get_logger().error(f"Image path does not exist: {image_path}")
-            return None
-        
-        # load image as greyscale and binary
-        image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE | cv2.IMREAD_UNCHANGED)
-
-        # Compress the image for testing (resize to smaller size)
-        image = cv2.resize(image, (0, 0), fx=0.1, fy=0.1, interpolation=cv2.INTER_AREA)
-
-        if image is None:
-            self.vision_node.get_logger().error(f"Failed to read image at: {image_path}")
-            return None
-        
-        return image
 
     def return_available_function_names(self) -> str:
         """
         Returns a list of available vision function names.
         """
         return json.dumps(self.function_names, indent=2, separators=(",", ":"))
+
 
     def return_function_parameters(self, function_name: str):
         """
@@ -99,8 +90,9 @@ class VisionHandler():
         :param image_name: The name of the image file.
         :return: A JSON containing computed facts about the image.
         """
-        image = self.load_image(image_name)
+        image = self._load_image(image_name, resize=False)
         facts = {
+            "image_name": image_name,
             "dimensions": self._get_image_dimensions(image),
             "statistics": self._get_image_statistics(image),
             "otsu_threshold": self._get_otsu_threshold(image),
@@ -124,8 +116,8 @@ class VisionHandler():
         """
 
         # load image as image:np.ndarray
-        image = self.load_image(image_name=self.image_name)
-        
+        image = self._load_image(image_name=self.image_name, resize=False)
+
         vision_processor = VisionProcessClass(
             vision_node=self.vision_node,
             process_filename=process_filename,
@@ -171,10 +163,48 @@ class VisionHandler():
 
         # save final image
         image_name_processed = self.image_name.replace('.png', '_processed.png')
-        cv2.imwrite(f"{self.image_path}/final_{image_name_processed}", final_image)
+        self._save_image(final_image, image_name_processed)
 
         return result_dict, "Processing completed successfully."
     
+
+    def _load_image(self, image_name: str, resize: bool) -> np.ndarray:
+        """
+        Load an image with a given name.
+        
+        :param image_name: Name of the image file.
+        :return: The loaded image as a numpy array.
+        """
+        image_path = Path(self.image_path, image_name).expanduser().resolve()
+        if not os.path.exists(image_path):
+            self.vision_node.get_logger().error(f"Image path does not exist: {image_path}")
+            return None
+        
+        # load image as greyscale and binary
+        image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE | cv2.IMREAD_UNCHANGED)
+
+        # Compress the image for testing (resize to smaller size)
+        if resize:
+            image = cv2.resize(image, (0, 0), fx=self.RESIZE_FACTOR, fy=self.RESIZE_FACTOR, interpolation=cv2.INTER_AREA)
+
+        if image is None:
+            self.vision_node.get_logger().error(f"Failed to read image at: {image_path}")
+            return None
+        
+        return image
+
+    def _save_image(self, image: np.ndarray, image_name: str):
+        """
+        Save the processed image to the specified path.
+        
+        :param image: The processed image as a numpy array.
+        :param image_name: The name of the image file to save.
+        """
+        if not os.path.exists(self.image_path):
+            os.makedirs(self.image_path)
+        
+        image_path = Path(self.image_path, image_name).expanduser().resolve()
+        cv2.imwrite(str(image_path), image)
 
     # width/height, bit depth
     def _get_image_dimensions(self, image: np.ndarray) -> dict:

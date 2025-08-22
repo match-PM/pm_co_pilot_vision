@@ -61,7 +61,8 @@ class Agent:
 
         # Inject available functions into system prompt
         self.system_prompt = raw_system_prompt.format(
-            available_functions=self.available_functions
+            available_functions=self.available_functions,
+            resize_factor=vision_handler.RESIZE_FACTOR
         )
 
         # self.node.get_logger().info(f"System prompt: {self.system_prompt}")
@@ -95,9 +96,7 @@ class Agent:
         # Build multimodal content blocks
         content_blocks: List[Dict[str, Any]] = [{"type": "text", "text": user_message}]
 
-        data_url = self.vision_functions.path_to_data_url(image_name)
-        if not (isinstance(data_url, str) and data_url.startswith("data:")):
-            self.node.get_logger().error("Failed to generate valid data URL for image.")
+        data_url = self.vision_functions.path_to_data_url(image_name, resize=True)
         content_blocks.append({"type": "image_url", "image_url": {"url": data_url}})
 
         # Compute concise image facts once
