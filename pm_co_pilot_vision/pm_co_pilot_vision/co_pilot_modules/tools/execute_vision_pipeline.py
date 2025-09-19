@@ -59,7 +59,7 @@ class VisionPipelineTool(BaseTool):
             pipeline_steps = self.convert_function_list(pipeline_steps)
             self._node.get_logger().info(f"Normalized pipeline steps: {pipeline_steps}")
 
-        self._node.get_logger().info(f"Pipeline steps: {pipeline_steps}")
+        self._node.get_logger().info(f"Pipeline steps after conversion: {pipeline_steps}")
 
         process_file_content = {
                 "vision_process_name": process_name,
@@ -67,7 +67,8 @@ class VisionPipelineTool(BaseTool):
                 "vision_pipeline": pipeline_steps
         }
 
-        process_file_name = f"{process_name}.json"
+        # process_file_name = f"{process_name}.json"
+        process_file_name = "test_pipeline.json"
         process_file_path = os.path.join(self._vision_handler.image_processes_path, process_file_name)
         # process_file_path = os.path.join("/home/match-mover/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_processes/", process_file_name)
         # process_file_path = os.path.join("/home/match-mover/Documents/ros2_ws/src/pm_vision_manager/pm_vision_manager/vision_processes/", process_file_name)

@@ -72,14 +72,18 @@ class VisionHandler():
         :param function_name: The name of the vision function.
         :return: A dictionary of parameters for the function.
         """
-        function = self.vision_functions
-        for func in function:
-            if func['function_name'] == function_name:
-                result = {
-                    "description": func.get('description', ''),
-                    "params": func.get('params', [])
-                }
-                return json.dumps(result)
+        try:
+            function = self.vision_functions
+            for func in function:
+                if func['function_name'] == function_name:
+                    result = {
+                        "description": func.get('description', ''),
+                        "quality_score": func.get('quality_score', None),
+                        "params": func.get('params', [])
+                    }
+                    return json.dumps(result)
+        except Exception as e:
+            self.vision_node.get_logger().error(f"Error retrieving function parameters: {e}")
             
         return json.dumps({})
 
@@ -152,15 +156,21 @@ class VisionHandler():
 
         process_debug = vision_processor.image_processing_handler.get_vision_process_debug()
 
-        self.vision_node.get_logger().info(f'vision result: {vision_result_dict}')
-        self.vision_node.get_logger().info(f'process debug: {process_debug}')
+        quality_score = vision_processor.image_processing_handler.get_quality_scores()
+
+        # self.vision_node.get_logger().info(f'vision result: {vision_result_dict}')
+        
+        # self.vision_node.get_logger().info(f'process debug: {process_debug}')
 
         # result_dict contains the vision_result_dict and process_debug
         result_dict = {
             "vision_result": vision_result_dict,
+            "quality_score": quality_score,
             "process_debug": process_debug
         }
 
+        self.vision_node.get_logger().warn(f'process result: {result_dict}')
+        
         # save final image
         image_name_processed = self.image_name.replace('.png', '_processed.png')
         self._save_image(final_image, image_name_processed)
@@ -280,3 +290,5 @@ class VisionHandler():
             scales.append(scale)
 
         return scales
+
+    
