@@ -51,26 +51,49 @@ class Agent:
             self.node.get_logger().error(f"Error loading prompts.yaml: {e}")
             raise
 
+        example_json = path + '/example_pipeline.json'
+
+        try:
+            with open(example_json, 'r') as file:
+                example_pipeline = json.load(file)
+        except Exception as e:
+            self.node.get_logger().error(f"Error loading example_pipeline.json: {e}")
+            raise
+
         self.memory = MemorySaver()
         self.config = {"configurable": {"thread_id": "1"}}    
 
         self.vision_functions = vision_handler
         self.available_functions = self.vision_functions.return_available_function_names()
 
-        # self.node.get_logger().info(f"raw_system_prompt: {raw_system_prompt}")
-
         # Inject available functions into system prompt
-        self.system_prompt = raw_system_prompt.format(
-            available_functions=self.available_functions,
-            resize_factor=vision_handler.RESIZE_FACTOR
+        # self.system_prompt = raw_system_prompt.format(
+        #     available_functions=self.available_functions
+        #     # example_pipeline=json.dumps(example_pipeline, indent=2, separators=(",", ":"))
+        # )
+
+
+        # self.prompt = ChatPromptTemplate.from_messages(
+        #     [ SystemMessagePromptTemplate.from_template(self.system_prompt), 
+        #      MessagesPlaceholder(variable_name="messages") # Keep this to include conversation history 
+        # ])
+
+        # Create a SystemMessagePromptTemplate using Jinja2
+        system_message_template = SystemMessagePromptTemplate.from_template(
+            raw_system_prompt,
+            template_format="jinja2" 
         )
 
-        # self.node.get_logger().info(f"System prompt: {self.system_prompt}")
+        # Build the full ChatPromptTemplate with conversation history
+        base_prompt = ChatPromptTemplate.from_messages([
+            system_message_template,
+            MessagesPlaceholder(variable_name="messages")
+        ])
 
-        self.prompt = ChatPromptTemplate.from_messages([
-            SystemMessagePromptTemplate.from_template(self.system_prompt),
-            MessagesPlaceholder(variable_name="messages") # Keep this to include conversation history
-        ])        
+        funcs_str = "```json\n" + self.available_functions + "\n```"
+        self.prompt = base_prompt.partial(available_functions=funcs_str)
+
+        self.node.get_logger().info(f"System Prompt: {self.prompt}")
 
         self.vision_tools = Tools(node, vision_handler=vision_handler)
 
@@ -104,7 +127,14 @@ class Agent:
         content_blocks.append({"type": "text", "text": f"Image facts: {image_facts}"})
 
         agent_executor = self.create_executor()
-        response = agent_executor.invoke({"messages": [HumanMessage(content=content_blocks)]}, self.config)
+
+        response = agent_executor.invoke(
+            {
+                "messages": [HumanMessage(content=content_blocks)]
+            }, 
+            self.config
+        )
+        
         ai_message = response["messages"][-1]   # The last message should be the response
         self.node.get_logger().info(f"Agent response: {ai_message}")
         response = ai_message.content

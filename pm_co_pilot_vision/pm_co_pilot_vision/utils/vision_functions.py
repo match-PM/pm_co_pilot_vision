@@ -93,10 +93,12 @@ class VisionHandler():
                         "params": func.get('params', [])
                     }
                     return json.dumps(result)
+            self.vision_node.get_logger().error(f"Function '{function_name}' not found.")
+            return json.dumps({"error": f"Function '{function_name}' not found. Use only available functions."})
+        
         except Exception as e:
             self.vision_node.get_logger().error(f"Error retrieving function parameters: {e}")
-            
-        return json.dumps({})
+            return json.dumps({"error": str(e)})
 
     def compute_image_facts(self, image_name: str) -> dict:
         """
@@ -176,13 +178,13 @@ class VisionHandler():
         image_name_processed = self.image_name.replace('.png', '_processed.png')
         self._save_image(final_image, image_name_processed)
         
-        time.sleep(0.5)
+        time.sleep(1)
         # save a resized version
         image_resized = self._load_image(image_name=image_name_processed, resize=True)
         self._save_image(image_resized, image_name_processed.replace('.png', '_resized.png'))
 
-        # wait for 0.5 seconds to ensure image is saved
-        time.sleep(0.5)
+        # wait for 1 seconds to ensure image is saved
+        time.sleep(1)
 
         # Build content blocks (processed image as data URL)
         processed_data_url = self.path_to_data_url(image_name_processed, resize=True)
@@ -246,13 +248,13 @@ class VisionHandler():
             "height": height,
             "pixel_size_microns": pixel_size_um,
             "magnification": magnification,
-            "um_per_px_object": um_per_px_object,                 # <-- REQUIRED by agent
+            "um_per_px_object": um_per_px_object,               
             "fov_um": {
                 "width_um": width * um_per_px_object,
                 "height_um": height * um_per_px_object
             },
             "bit_depth": image.dtype.name,
-            "resize_factor_preview": self.RESIZE_FACTOR           # <-- REQUIRED by agent
+            "resize_factor_preview": self.RESIZE_FACTOR         
         }
 
     # grayscale percentiles (p1, p50, p99), mean/std
