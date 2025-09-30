@@ -17,7 +17,7 @@ from pm_vision_manager.va_py_modules.vision_assistant_class import VisionProcess
 
 class VisionHandler():
 
-    RESIZE_FACTOR = 0.1  # Resize factor for testing
+    RESIZE_FACTOR = 0.05  # Resize factor for testing
 
     def __init__(self, vision_node: Node, image_name: str, image_path: str, image_processes_path: str):
         self.vision_node = vision_node
@@ -38,7 +38,18 @@ class VisionHandler():
         self.camera_config_filename = "pm_robot_basler_top_cam_1.yaml" # Replace with actual path
         # self.image_path = "/home/match-mover/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_image_db/test_pipeline/"
         
+        self.vision_processor = VisionProcessClass(
+            vision_node=self.vision_node,
+            process_filename=self.process_filename,
+            camera_config_filename=self.camera_config_filename,
+            launch_as_assistant=False, 
+            process_UID='CoPilotVision',
+            run_cross_validation=False
+        )
 
+        self.vision_processor.load_camera_config()
+        self.magnification = self.vision_processor.image_processing_handler.magnification
+        self.pixel_size_microns = self.vision_processor.image_processing_handler.pixelsize
 
     def path_to_data_url(self, image_name: str, resize: bool) -> str:
         """
@@ -100,14 +111,14 @@ class VisionHandler():
             "dimensions": self._get_image_dimensions(image),
             "statistics": self._get_image_statistics(image),
             "otsu_threshold": self._get_otsu_threshold(image),
-            "edge_density": self._get_edge_density(image),
-            "object_scales": self._get_object_scales(image)
+            "edge_density": self._get_edge_density(image)
+            # "object_scales": self._get_object_scales(image)
         }
         self.vision_node.get_logger().info(f'dimensions: {facts["dimensions"]}')
         self.vision_node.get_logger().info(f'statistics: {facts["statistics"]}')
         self.vision_node.get_logger().info(f'otsu_threshold: {facts["otsu_threshold"]}')
         self.vision_node.get_logger().info(f'edge_density: {facts["edge_density"]}')
-        self.vision_node.get_logger().info(f'object_scales: {facts["object_scales"]}')
+        # self.vision_node.get_logger().info(f'object_scales: {facts["object_scales"]}')
 
         return json.dumps(facts)
 
@@ -122,45 +133,35 @@ class VisionHandler():
         # load image as image:np.ndarray
         image = self._load_image(image_name=self.image_name, resize=False)
 
-        vision_processor = VisionProcessClass(
-            vision_node=self.vision_node,
-            process_filename=process_filename,
-            camera_config_filename=self.camera_config_filename,
-            launch_as_assistant=False, 
-            process_UID='CoPilotVision',
-            run_cross_validation=False
-        )
+        self.vision_processor.process_filename = process_filename
 
-        vision_processor._load_process_file()
+        self.vision_processor._load_process_file()
 
-        set_parameter_success = set_camera_parameters(vision_processor.vision_node, 
-                                                        vision_processor.image_processing_handler,
-                                                        vision_processor.process_pipeline_list)
+        set_parameter_success = set_camera_parameters(self.vision_processor.vision_node, 
+                                                        self.vision_processor.image_processing_handler,
+                                                        self.vision_processor.process_pipeline_list)
 
         if not set_parameter_success:
-            vision_processor.image_processing_handler.vision_routine_done = True
-            vision_processor.image_processing_handler.visionOK = False
+            self.vision_processor.image_processing_handler.vision_routine_done = True
+            self.vision_processor.image_processing_handler.visionOK = False
             error_msg = "Failed to set camera parameters."
             self.vision_node.get_logger().error(error_msg)
             return None, error_msg
 
 
-        vision_processor.image_processing_handler.set_image_metatdata(vision_processor.process_db_path,self.image_name)
-        vision_processor.image_processing_handler.set_initial_image(image)
+        self.vision_processor.image_processing_handler.set_image_metatdata(self.vision_processor.process_db_path,self.image_name)
+        self.vision_processor.image_processing_handler.set_initial_image(image)
 
-        display_image, vision_results = process_image(vision_processor.vision_node, vision_processor.image_processing_handler, vision_processor.process_pipeline_list)
-        final_image = vision_processor.image_processing_handler.get_display_image()
+        display_image, vision_results = process_image(self.vision_processor.vision_node, self.vision_processor.image_processing_handler, self.vision_processor.process_pipeline_list)
+        final_image = self.vision_processor.image_processing_handler.get_processed_image_overlay()
 
         # result_dict = vision_processor.save_vision_results()
-        vision_result_dict = vision_processor.image_processing_handler.get_vision_response()
+        vision_result_dict = self.vision_processor.image_processing_handler.get_vision_response()
 
-        process_debug = vision_processor.image_processing_handler.get_vision_process_debug()
-
-        quality_score = vision_processor.image_processing_handler.get_quality_scores()
-
-        # self.vision_node.get_logger().info(f'vision result: {vision_result_dict}')
+        process_debug = self.vision_processor.image_processing_handler.get_vision_process_debug()
+        self.vision_processor.image_processing_handler.clear_vision_process_debug()
         
-        # self.vision_node.get_logger().info(f'process debug: {process_debug}')
+        quality_score = self.vision_processor.image_processing_handler.get_quality_scores()
 
         # result_dict contains the vision_result_dict and process_debug
         result_dict = {
@@ -174,9 +175,27 @@ class VisionHandler():
         # save final image
         image_name_processed = self.image_name.replace('.png', '_processed.png')
         self._save_image(final_image, image_name_processed)
+        
+        time.sleep(0.5)
+        # save a resized version
+        image_resized = self._load_image(image_name=image_name_processed, resize=True)
+        self._save_image(image_resized, image_name_processed.replace('.png', '_resized.png'))
 
-        return result_dict, "Processing completed successfully."
-    
+        # wait for 0.5 seconds to ensure image is saved
+        time.sleep(0.5)
+
+        # Build content blocks (processed image as data URL)
+        processed_data_url = self.path_to_data_url(image_name_processed, resize=True)
+
+        content_blocks = [
+            {"type": "text", "text": "Processed image and pipeline results."},
+            {"type": "image_url", "image_url": {"url": processed_data_url}},
+            {"type": "text", "text": f"Pipeline results: {result_dict}"}
+        ]
+
+        return content_blocks
+        
+
 
     def _load_image(self, image_name: str, resize: bool) -> np.ndarray:
         """
@@ -216,15 +235,24 @@ class VisionHandler():
         image_path = Path(self.image_path, image_name).expanduser().resolve()
         cv2.imwrite(str(image_path), image)
 
-    # width/height, bit depth
     def _get_image_dimensions(self, image: np.ndarray) -> dict:
         height, width = image.shape[:2]
+        pixel_size_um = self.pixel_size_microns
+        magnification = self.magnification
+        um_per_px_object = pixel_size_um / magnification
 
         return {
             "width": width,
             "height": height,
-            "pixel_size_microns": 0.22,
-            "bit_depth": image.dtype.name
+            "pixel_size_microns": pixel_size_um,
+            "magnification": magnification,
+            "um_per_px_object": um_per_px_object,                 # <-- REQUIRED by agent
+            "fov_um": {
+                "width_um": width * um_per_px_object,
+                "height_um": height * um_per_px_object
+            },
+            "bit_depth": image.dtype.name,
+            "resize_factor_preview": self.RESIZE_FACTOR           # <-- REQUIRED by agent
         }
 
     # grayscale percentiles (p1, p50, p99), mean/std

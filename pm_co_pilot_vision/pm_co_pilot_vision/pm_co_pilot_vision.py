@@ -19,11 +19,11 @@ class PmCoPilotVisionNode(Node):
 
         # image_path = os.path.join("/home/match-mover/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_processes/", image_name)
    
-        # image_path = "/home/match-mover/Documents/ros2_ws/src/pm_vision_manager/pm_vision_manager/vision_db/test_pipeline/"
-        # image_processes_path = "/home/match-mover/Documents/ros2_ws/src/pm_vision_manager/pm_vision_manager/vision_processes"
-        image_path = "/home/match-mover/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_image_db/test_pipeline/"
-        image_processes_path = "/home/match-mover/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_processes"
-        image_name = "cube.png"
+        image_path = "/home/match-mover/Documents/ros2_ws/src/pm_vision_manager/pm_vision_manager/vision_db/test_pipeline/"
+        image_processes_path = "/home/match-mover/Documents/ros2_ws/src/pm_vision_manager/pm_vision_manager/vision_processes"
+        # image_path = "/home/match-mover/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_image_db/test_pipeline/"
+        # image_processes_path = "/home/match-mover/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_processes"
+        image_name = "fitting_hole.png"
 
         vision_handler = VisionHandler(
             vision_node=self, 
@@ -39,7 +39,7 @@ class PmCoPilotVisionNode(Node):
         
         # user_prompt = "Convert the image to grayscale and add a threshold"
         # user_prompt = "What do you see in the image? Do not perform any operations on the image, just describe it."
-        user_prompt = "detect the corner with sub pixel accuracy"
+        user_prompt = "detect the circle based on the outer edge of the fitting hole"
 
         response = self.agent.handle_user_input(user_prompt, image_name=image_name)
         self.get_logger().info(f"Agent response: {response}")

@@ -80,7 +80,7 @@ class VisionPipelineTool(BaseTool):
 
         # Execute the vision pipeline
         try:
-            result_dict, message = self._vision_handler.process_image(
+            result_dict, message, final_image = self._vision_handler.process_image(
                 process_filename=process_file_name
             )
         except Exception as e:
@@ -89,7 +89,7 @@ class VisionPipelineTool(BaseTool):
         if result_dict is None:
             return f"Vision pipeline '{process_name}' error: {message}"
         else:
-            return f"Vision pipeline '{process_name}' Results: {result_dict}"
+            return f"Vision pipeline '{process_name}' Results: {result_dict}, Processed image: {final_image}"
 
 
 
