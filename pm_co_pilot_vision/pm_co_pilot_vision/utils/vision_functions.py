@@ -11,13 +11,14 @@ from pathlib import Path
 import numpy as np
 import uuid
 from ament_index_python.packages import get_package_share_directory
+from typing import Optional
 
 from pm_vision_manager.va_py_modules.vision_pipline_processing import process_image, set_camera_parameters
 from pm_vision_manager.va_py_modules.vision_assistant_class import VisionProcessClass
 
 class VisionHandler():
 
-    RESIZE_FACTOR = 0.05  # Resize factor for testing
+    RESIZE_FACTOR = 0.1  # Resize factor for testing
 
     def __init__(self, vision_node: Node, image_name: str, image_path: str, image_processes_path: str):
         self.vision_node = vision_node
@@ -51,13 +52,13 @@ class VisionHandler():
         self.magnification = self.vision_processor.image_processing_handler.magnification
         self.pixel_size_microns = self.vision_processor.image_processing_handler.pixelsize
 
-    def path_to_data_url(self, image_name: str, resize: bool) -> str:
+    def path_to_data_url(self, image_name: str, greyscale: bool, resize: bool) -> str:
         """
             Convert an image to a data URL. Use load_image with resize=True to compress the image.
             :param image_name: Name of the image file.
             :return: Data URL of the image.
             """
-        image = self._load_image(image_name, resize=resize)
+        image = self._load_image(image_name, greyscale=greyscale, resize=resize)
         if image is None:
             return ""
         # Encode image as PNG in memory
@@ -107,7 +108,7 @@ class VisionHandler():
         :param image_name: The name of the image file.
         :return: A JSON containing computed facts about the image.
         """
-        image = self._load_image(image_name, resize=False)
+        image = self._load_image(image_name, greyscale=False, resize=False)
         facts = {
             "image_name": image_name,
             "dimensions": self._get_image_dimensions(image),
@@ -133,7 +134,7 @@ class VisionHandler():
         """
 
         # load image as image:np.ndarray
-        image = self._load_image(image_name=self.image_name, resize=False)
+        image = self._load_image(image_name=self.image_name, greyscale=False, resize=False)
 
         self.vision_processor.process_filename = process_filename
 
@@ -180,14 +181,14 @@ class VisionHandler():
         
         time.sleep(1)
         # save a resized version
-        image_resized = self._load_image(image_name=image_name_processed, resize=True)
+        image_resized = self._load_image(image_name=image_name_processed, greyscale=False, resize=True)
         self._save_image(image_resized, image_name_processed.replace('.png', '_resized.png'))
 
         # wait for 1 seconds to ensure image is saved
         time.sleep(1)
 
         # Build content blocks (processed image as data URL)
-        processed_data_url = self.path_to_data_url(image_name_processed, resize=True)
+        processed_data_url = self.path_to_data_url(image_name_processed, greyscale=False, resize=True)
 
         content_blocks = [
             {"type": "text", "text": "Processed image and pipeline results."},
@@ -199,7 +200,7 @@ class VisionHandler():
         
 
 
-    def _load_image(self, image_name: str, resize: bool) -> np.ndarray:
+    def _load_image(self, image_name: str, greyscale: bool, resize: bool) -> Optional[np.ndarray]:
         """
         Load an image with a given name.
         
@@ -212,7 +213,14 @@ class VisionHandler():
             return None
         
         # load image as greyscale and binary
-        image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE | cv2.IMREAD_UNCHANGED)
+        if greyscale:
+            image = cv2.imread(str(image_path), cv2.IMREAD_GRAYSCALE)
+        else:
+            image = cv2.imread(str(image_path), cv2.IMREAD_COLOR)
+
+        if image is None:
+            self.vision_node.get_logger().error(f"Failed to read image at: {image_path}")
+            return None
 
         # Compress the image for testing (resize to smaller size)
         if resize:

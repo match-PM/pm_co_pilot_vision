@@ -92,6 +92,7 @@ class Agent:
 
         funcs_str = "```json\n" + self.available_functions + "\n```"
         self.prompt = base_prompt.partial(available_functions=funcs_str)
+        # self.prompt = base_prompt.partial(resize_factor_preview=VisionHandler.RESIZE_FACTOR)
 
         self.node.get_logger().info(f"System Prompt: {self.prompt}")
 
@@ -119,7 +120,7 @@ class Agent:
         # Build multimodal content blocks
         content_blocks: List[Dict[str, Any]] = [{"type": "text", "text": user_message}]
 
-        data_url = self.vision_functions.path_to_data_url(image_name, resize=True)
+        data_url = self.vision_functions.path_to_data_url(image_name, greyscale=True, resize=True)
         content_blocks.append({"type": "image_url", "image_url": {"url": data_url}})
 
         # Compute concise image facts once
