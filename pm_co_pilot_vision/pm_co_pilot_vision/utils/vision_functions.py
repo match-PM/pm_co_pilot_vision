@@ -1,6 +1,8 @@
 
+from matplotlib import image
 import rclpy
 from rclpy.node import Node
+from sensor_msgs.msg import Image
 import time # For potential delays or checks
 import sys
 import os
@@ -13,8 +15,13 @@ import uuid
 from ament_index_python.packages import get_package_share_directory
 from typing import Optional
 
+from rclpy.callback_groups import ReentrantCallbackGroup, MutuallyExclusiveCallbackGroup
+from rclpy.qos import QoSProfile, QoSDurabilityPolicy, QoSReliabilityPolicy, QoSHistoryPolicy, qos_profile_sensor_data
+
 from pm_vision_manager.va_py_modules.vision_pipline_processing import process_image, set_camera_parameters
 from pm_vision_manager.va_py_modules.vision_assistant_class import VisionProcessClass
+
+from pm_skills.py_modules.PmRobotUtils import PmRobotUtils
 
 class VisionHandler():
 
@@ -25,6 +32,9 @@ class VisionHandler():
         self.image_name = image_name
         self.image_path = image_path
         self.image_processes_path = image_processes_path
+        self.callback_group_RE = ReentrantCallbackGroup()
+
+        # self.pm_robot_utils = PmRobotUtils(self)
 
         path = get_package_share_directory("pm_co_pilot_vision")
         vision_functions_json = f"{path}/vision_functions.json"
@@ -36,8 +46,8 @@ class VisionHandler():
 
         # Define dummy filenames for testing
         self.process_filename = "test_pipeline.json" # Replace with actual path
-        self.camera_config_filename = "pm_robot_basler_top_cam_1.yaml" # Replace with actual path
-        # self.image_path = "/home/match-mover/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_image_db/test_pipeline/"
+        # self.camera_config_filename = "pm_robot_basler_top_cam_1.yaml" # Replace with actual path
+        self.camera_config_filename = "pm_robot_top_cam_1_Unity.yaml" # Replace with actual path
         
         self.vision_processor = VisionProcessClass(
             vision_node=self.vision_node,
@@ -47,6 +57,7 @@ class VisionHandler():
             process_UID='CoPilotVision',
             run_cross_validation=False
         )
+
 
         self.vision_processor.load_camera_config()
         self.magnification = self.vision_processor.image_processing_handler.magnification
@@ -61,6 +72,12 @@ class VisionHandler():
         image = self._load_image(image_name, greyscale=greyscale, resize=resize)
         if image is None:
             return ""
+        
+        ## draw white square in the top left corner of the image
+        # image[0:20, 0:20] = 255
+        # new_image_name = image_name.split(".")[0] + "_resized.png"
+        # self._save_image(image=image, image_name=new_image_name)
+
         # Encode image as PNG in memory
         success, buffer = cv2.imencode('.png', image)
         if not success:
@@ -112,15 +129,15 @@ class VisionHandler():
         facts = {
             "image_name": image_name,
             "dimensions": self._get_image_dimensions(image),
-            "statistics": self._get_image_statistics(image),
+            # "statistics": self._get_image_statistics(image),
             "otsu_threshold": self._get_otsu_threshold(image),
-            "edge_density": self._get_edge_density(image)
+            # "edge_density": self._get_edge_density(image)
             # "object_scales": self._get_object_scales(image)
         }
         self.vision_node.get_logger().info(f'dimensions: {facts["dimensions"]}')
-        self.vision_node.get_logger().info(f'statistics: {facts["statistics"]}')
+        # self.vision_node.get_logger().info(f'statistics: {facts["statistics"]}')
         self.vision_node.get_logger().info(f'otsu_threshold: {facts["otsu_threshold"]}')
-        self.vision_node.get_logger().info(f'edge_density: {facts["edge_density"]}')
+        # self.vision_node.get_logger().info(f'edge_density: {facts["edge_density"]}')
         # self.vision_node.get_logger().info(f'object_scales: {facts["object_scales"]}')
 
         return json.dumps(facts)
@@ -329,4 +346,4 @@ class VisionHandler():
 
         return scales
 
-    
+

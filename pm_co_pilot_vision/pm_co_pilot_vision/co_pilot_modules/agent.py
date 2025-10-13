@@ -22,6 +22,7 @@ from pm_vision_app.py_modules.vision_pipeline_class import VisionPipeline
 from .tools.execute_vision_pipeline import VisionPipelineTool
 from .tools.vision_tools import Tools
 from pm_co_pilot_vision.utils.vision_functions import VisionHandler
+from .llm_config import LLMConfig
 from ament_index_python.packages import get_package_share_directory
 
 
@@ -37,46 +38,31 @@ class Agent:
         self.node = node
         self.node.get_logger().info("Agent __init__ called.")
 
-        try:
-            path = get_package_share_directory("pm_co_pilot_vision")
-            prompt = path + '/prompts.yaml'
-            with open(prompt, 'r') as file:
-                config_data = yaml.safe_load(file)
-                tool = config_data['agent']
-                self.model = tool['model']
-                self.model_provider = tool['model_provider']
-                self.temperature = tool['temperature']
-                raw_system_prompt = tool['system_prompt']
-        except Exception as e:
-            self.node.get_logger().error(f"Error loading prompts.yaml: {e}")
-            raise
+        # try:
+        #     path = get_package_share_directory("pm_co_pilot_vision")
+        #     prompt = path + '/prompts.yaml'
+        #     with open(prompt, 'r') as file:
+        #         config_data = yaml.safe_load(file)
+        #         tool = config_data['agent']
+        #         self.model = tool['model']
+        #         self.model_provider = tool['model_provider']
+        #         self.temperature = tool['temperature']
+        #         raw_system_prompt = tool['system_prompt']
+        # except Exception as e:
+        #     self.node.get_logger().error(f"Error loading prompts.yaml: {e}")
+        #     raise
 
-        example_json = path + '/example_pipeline.json'
-
-        try:
-            with open(example_json, 'r') as file:
-                example_pipeline = json.load(file)
-        except Exception as e:
-            self.node.get_logger().error(f"Error loading example_pipeline.json: {e}")
-            raise
+        llm_config = LLMConfig("agent")
+        self.model = llm_config.model
+        self.model_provider = llm_config.model_provider
+        raw_system_prompt = llm_config.system_prompt
+        self.temperature = llm_config.temperature
 
         self.memory = MemorySaver()
         self.config = {"configurable": {"thread_id": "1"}}    
 
         self.vision_functions = vision_handler
         self.available_functions = self.vision_functions.return_available_function_names()
-
-        # Inject available functions into system prompt
-        # self.system_prompt = raw_system_prompt.format(
-        #     available_functions=self.available_functions
-        #     # example_pipeline=json.dumps(example_pipeline, indent=2, separators=(",", ":"))
-        # )
-
-
-        # self.prompt = ChatPromptTemplate.from_messages(
-        #     [ SystemMessagePromptTemplate.from_template(self.system_prompt), 
-        #      MessagesPlaceholder(variable_name="messages") # Keep this to include conversation history 
-        # ])
 
         # Create a SystemMessagePromptTemplate using Jinja2
         system_message_template = SystemMessagePromptTemplate.from_template(
