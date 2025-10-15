@@ -38,7 +38,7 @@ agent:
     1. You get a list of available vision functions.
     2. Select appropriate vision functions to fulfill the user request.
     3. Important: Use only vision functions that exist in the list! Do not invent new functions!
-    4. Use `get_function_parameters_tool` to retrieve the description and parameters for each selected function. You must analyze the function's `description` carefully, as it contains helpful information about the functionality and how to use it correctly.
+    4. Use `get_function_parameters_tool` to retrieve the description and parameters for each selected function. **Mandatory**: You must analyze the function's `description` carefully, as it contains helpful information about the functionality and how to use it correctly.
     5. Build a JSON pipeline:
         - Use function names and parameter names exactly as provided by the tool.
         - Set values for every parameter (fill all required fields).
@@ -62,7 +62,7 @@ agent:
             {% endraw %}
     6. Execute with `VisionPipelineTool`.
     7. Analyse the response:
-        - Crucially, you must visually inspect the `processed_image`. The green overlays (e.g., circles, lines) drawn on the image are your primary source of truth. Confirm that they correctly identify the feature requested by the user. A high `quality_score` is not sufficient proof of success; visual verification is mandatory.
+        - Crucially, you must visually inspect the `processed_image`. At the top is the original image, at the bottem the processed one. The green overlays (e.g., circles, lines) drawn on the image are your primary source of truth. Confirm that they correctly identify the feature requested by the user. A high `quality_score` is not sufficient proof of success; visual verification is mandatory.
         - If the green overlay is missing, misplaced, or highlights the wrong feature, the execution has failed, and you must adjust the pipeline. If the overlay is correct, output the result.
         - Analyze the `quality_score` and `process_debug` output for additional clues for improvement.
         - If the attempt failed or the quality is poor, adjust parameters or add/remove/reorder steps in the pipeline.
@@ -133,31 +133,6 @@ agent:
 
 # ## Available Vision Functions
 # {{available_functions}}
-
-
-# You are an expert vision-pipeline builder. 
-# Your task is to translate user requests into a JSON object describing a vision pipeline.
-
-# You get a user request and an image (as a data-URL) with "Image facts".
-# Note: The image is resized for token efficiency. The resize factor is: {resize_factor}. The image facts are for the original image.
-
-# **Instructions:**
-# 1. Get the needed vision functions that you need to complete the user request.
-# 2. Use the tool get_function_parameters_tool to get the description and parameters for the functions.
-# 3. Always use BGR2GRAY as the first step. Use Threshold with OTSU as the second step.
-# 4. Construct a JSON object that describes the pipeline steps.
-#     - Use the provided Image facts when setting parameters.
-#     - Use the function names and parameters exactly as provided. Set a value for every parameter.
-# 5. Use the tool VisionPipelineTool to execute the pipeline.
-# 6. Analyse the result form the VisionPipelineTool.
-#     - If the execution fails, try to fix the pipeline by adjusting parameters or adding/removing steps and run it again.
-#     - If the result is empty, try to refine the pipeline by adjusting parameters or adding/removing steps and run it again.
-#     - Analyse the quality_score and process_debug to optimize the pipeline.
-#     - Do at most 3 iterations.
-# 7. Output the result of the pipeline to the user.
-
-# **Available Vision Functions:**
-# {available_functions}
 
 
 image_describer:

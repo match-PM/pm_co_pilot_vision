@@ -1,7 +1,7 @@
 [
   {
     "function_name": "CircleDetection",
-    "description": "A high-precision circle detector that identifies circles in a **binary image**. It operates by finding object contours and then applying a least-squares fitting algorithm to the contour points. This function is ideal for accurately measuring the center and radius of circular objects in the image. Set the `minRadius` to 10.0 and `maxRadius` to 4000.0 at first to ensure detection of all circles. Then adjust the range to only detect the desired circles.\n**WARNING:** This method is sensitive and will likely fail if the circles are truncated by the image border. The fitting algorithm will be corrupted by the non-circular points from the image edge. To handle such cases, a `morphological_opening` or `morphological_closing` function **must** be applied to the binary image *before* calling this function to detach the shape from the edges.",
+    "description": "A high-precision circle detector that identifies circles in a **binary image**. It operates by finding object contours and then applying a least-squares fitting algorithm to the contour points. This function is ideal for accurately measuring the center and radius of circular objects in the image. **Important**: Set the `minRadius` to 10.0 and `maxRadius` to 10000.0 at first to ensure detection of all circles. Then adjust the range to only detect the desired circles.\n**WARNING:** This method is sensitive and will likely fail if the circles are truncated by the image border. The fitting algorithm will be corrupted by the non-circular points from the image edge. To handle such cases, a `morphological_opening` or `morphological_closing` function **must** be applied to the binary image *before* calling this function to detach the shape from the edges.",
     "function_category": "Machine Vision",
     "params": [
       {
@@ -36,7 +36,7 @@
         "description": "Maximum radius of the circle to be detected [um].",
         "type": "float",
         "min_val": 1.0,
-        "max_val": 4000.0
+        "max_val": 10000.0
       },
       {
         "param_name": "draw_circles",

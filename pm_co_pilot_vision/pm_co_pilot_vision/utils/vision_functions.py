@@ -73,7 +73,8 @@ class VisionHandler():
 
 
         # self.camera_config_filename = "pm_robot_basler_top_cam_1.yaml" # Replace with actual path
-        self.camera_config_filename = "pm_robot_top_cam_1_Unity.yaml" # Replace with actual path
+        # self.camera_config_filename = "pm_robot_top_cam_1_Unity.yaml" # Replace with actual path
+        self.camera_config_filename = "pm_robot_basler_bottom_cam_2.yaml" 
         
         self.vision_processor = VisionProcessClass(
             vision_node=self.vision_node,
@@ -195,7 +196,8 @@ class VisionHandler():
             self.vision_processor.image_processing_handler.set_initial_image(image)
 
             display_image, vision_results = process_image(self.vision_processor.vision_node, self.vision_processor.image_processing_handler, self.vision_processor.process_pipeline_list)
-            final_image = self.vision_processor.image_processing_handler.get_processed_image_overlay()
+            # final_image = self.vision_processor.image_processing_handler.get_processed_image_overlay()
+            final_image = self.vision_processor.image_processing_handler.get_final_image()
 
             # result_dict = vision_processor.save_vision_results()
             vision_result_dict = self.vision_processor.image_processing_handler.get_vision_response()
