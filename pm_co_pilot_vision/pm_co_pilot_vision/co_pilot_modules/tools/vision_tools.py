@@ -37,24 +37,7 @@ class Tools:
             args_schema=GetFunctionParametersArgs # Specify the schema for parameters
         )
 
-        self.get_original_image_tool = Tool(
-            name="get_original_image",
-            func=self._get_original_image,
-            description="Get the original image, not the resized one. Takes 'image_name' as input.",
-            args_schema=NoArgs  # No arguments expected
-        )
-
         
-    def _get_original_image(self, image_name: str) -> str:
-        """
-        Get the original image, not the resized one.
-        
-        :param image_name: Name of the image file.
-        :return: Data URL of the original image.
-        """
-        image_url = self._vision_handler.path_to_data_url(image_name, resize=False)
-        return image_url
-
     def _get_function_parameters(self, function_names: List[str]) -> str:
         """
         Get the description and parameters for the requested vision functions.

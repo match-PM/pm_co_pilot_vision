@@ -10,6 +10,10 @@ from pm_co_pilot_vision.utils.vision_functions import VisionHandler
 
 from langchain.chat_models import init_chat_model
 
+###############################################################################
+# Image Describer Tool --> Currently not used
+###############################################################################
+
 class ImageDescriberTool(BaseTool):
     name: ClassVar[str] = "image_describer"
     description: ClassVar[str] = ""
@@ -33,7 +37,7 @@ class ImageDescriberTool(BaseTool):
         temperature = llm_config.temperature
 
         image_facts = self._vision_handler.compute_image_facts(image_name)
-        image_data_url = self._vision_handler.path_to_data_url(image_name, greyscale=True, resize=True)
+        image_data_url = self._vision_handler.path_to_data_url(self._vision_handler.image_path, image_name, greyscale=True, resize=True)
 
         messages = [
             {"role": "system", "content": prompt},

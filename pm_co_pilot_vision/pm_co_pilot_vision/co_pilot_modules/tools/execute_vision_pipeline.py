@@ -67,13 +67,22 @@ class VisionPipelineTool(BaseTool):
                 "vision_pipeline": pipeline_steps
         }
 
-        # process_file_name = f"{process_name}.json"
-        process_file_name = "test_pipeline.json"
-        process_file_path = os.path.join(self._vision_handler.image_processes_path, process_file_name)
-        # process_file_path = os.path.join("/home/match-mover/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_processes/", process_file_name)
-        # process_file_path = os.path.join("/home/match-mover/Documents/ros2_ws/src/pm_vision_manager/pm_vision_manager/vision_processes/", process_file_name)
+        # # process_file_name = f"{process_name}.json"
+        # process_file_name = "test_pipeline.json"
+        # process_file_path = os.path.join(self._vision_handler.image_processes_path, process_file_name)
+        # # process_file_path = os.path.join("/home/match-mover/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_processes/", process_file_name)
+        # # process_file_path = os.path.join("/home/match-mover/Documents/ros2_ws/src/pm_vision_manager/pm_vision_manager/vision_processes/", process_file_name)
 
-        # os.makedirs(vision_pipeline.vision_process_libary_path, exist_ok=True)
+        # # os.makedirs(vision_pipeline.vision_process_libary_path, exist_ok=True)
+
+        # with open(process_file_path, 'w') as f:
+        #     json.dump(process_file_content, f, indent=4)
+
+        process_file_name = self._vision_handler.pipeline_name + ".json"
+        process_file_path = os.path.join(self._vision_handler.image_processes_path, process_file_name)
+
+        if not os.path.exists(self._vision_handler.image_processes_path):
+            os.makedirs(self._vision_handler.image_processes_path)
 
         with open(process_file_path, 'w') as f:
             json.dump(process_file_content, f, indent=4)

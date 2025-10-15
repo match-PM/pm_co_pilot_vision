@@ -28,14 +28,14 @@
         "param_name": "minRadius",
         "description": "Minimum radius of the circle to be detected [um].",
         "type": "float",
-        "min_val": 10.0,
+        "min_val": 1.0,
         "max_val": 4000.0
       },
       {
         "param_name": "maxRadius",
         "description": "Maximum radius of the circle to be detected [um].",
         "type": "float",
-        "min_val": 10.0,
+        "min_val": 1.0,
         "max_val": 4000.0
       },
       {

@@ -9,6 +9,7 @@ import os
 import cv2
 import json
 import base64, mimetypes
+from datetime import datetime
 from pathlib import Path
 import numpy as np
 import uuid
@@ -21,6 +22,8 @@ from rclpy.qos import QoSProfile, QoSDurabilityPolicy, QoSReliabilityPolicy, QoS
 from pm_vision_manager.va_py_modules.vision_pipline_processing import process_image, set_camera_parameters
 from pm_vision_manager.va_py_modules.vision_assistant_class import VisionProcessClass
 
+from pm_co_pilot_vision.co_pilot_modules.llm_config import LLMConfig
+
 from pm_skills.py_modules.PmRobotUtils import PmRobotUtils
 
 class VisionHandler():
@@ -29,9 +32,14 @@ class VisionHandler():
 
     def __init__(self, vision_node: Node, image_name: str, image_path: str, image_processes_path: str):
         self.vision_node = vision_node
+
+        llm_config = LLMConfig("agent")
+
         self.image_name = image_name
+        self.pipeline_name = image_name.replace('.png', '') + "_" + llm_config.model.replace(':', '_') + "_" + datetime.now().strftime("%Y%m%d_%H_%M_%S")
         self.image_path = image_path
-        self.image_processes_path = image_processes_path
+        self.image_result_path = image_path + "/" + self.pipeline_name + "/"
+        self.image_processes_path = image_processes_path + "/" + self.pipeline_name + "/"
         self.callback_group_RE = ReentrantCallbackGroup()
 
         # self.pm_robot_utils = PmRobotUtils(self)
@@ -44,14 +52,32 @@ class VisionHandler():
 
         self.function_names = [func['function_name'] for func in self.vision_functions]
 
-        # Define dummy filenames for testing
-        self.process_filename = "test_pipeline.json" # Replace with actual path
+        process_filename = self.pipeline_name + ".json"
+        process_file_path = os.path.join(self.image_processes_path, process_filename)
+
+        # Ensure directory exists
+        os.makedirs(self.image_processes_path, exist_ok=True)
+
+        process_file_content = {
+                "vision_process_name": "process_name",
+                "process creation": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+                "vision_pipeline": "pipeline_steps"
+        }
+
+        # Create empty JSON file if not exists
+        if not os.path.exists(process_file_path):
+            with open(process_file_path, 'w') as f:
+                json.dump(process_file_content, f)
+
+        self.process_file = f"/co_pilot_tests/{self.pipeline_name}/{self.pipeline_name}.json"
+
+
         # self.camera_config_filename = "pm_robot_basler_top_cam_1.yaml" # Replace with actual path
         self.camera_config_filename = "pm_robot_top_cam_1_Unity.yaml" # Replace with actual path
         
         self.vision_processor = VisionProcessClass(
             vision_node=self.vision_node,
-            process_filename=self.process_filename,
+            process_filename=self.process_file,
             camera_config_filename=self.camera_config_filename,
             launch_as_assistant=False, 
             process_UID='CoPilotVision',
@@ -63,21 +89,16 @@ class VisionHandler():
         self.magnification = self.vision_processor.image_processing_handler.magnification
         self.pixel_size_microns = self.vision_processor.image_processing_handler.pixelsize
 
-    def path_to_data_url(self, image_name: str, greyscale: bool, resize: bool) -> str:
+    def path_to_data_url(self, path: str, image_name: str, greyscale: bool, resize: bool) -> str:
         """
             Convert an image to a data URL. Use load_image with resize=True to compress the image.
             :param image_name: Name of the image file.
             :return: Data URL of the image.
             """
-        image = self._load_image(image_name, greyscale=greyscale, resize=resize)
+        image = self._load_image(path, image_name, greyscale=greyscale, resize=resize)
         if image is None:
             return ""
         
-        ## draw white square in the top left corner of the image
-        # image[0:20, 0:20] = 255
-        # new_image_name = image_name.split(".")[0] + "_resized.png"
-        # self._save_image(image=image, image_name=new_image_name)
-
         # Encode image as PNG in memory
         success, buffer = cv2.imencode('.png', image)
         if not success:
@@ -125,7 +146,7 @@ class VisionHandler():
         :param image_name: The name of the image file.
         :return: A JSON containing computed facts about the image.
         """
-        image = self._load_image(image_name, greyscale=False, resize=False)
+        image = self._load_image(self.image_path, image_name, greyscale=False, resize=False)
         facts = {
             "image_name": image_name,
             "dimensions": self._get_image_dimensions(image),
@@ -150,81 +171,94 @@ class VisionHandler():
         :return: The processed image and any results from the processing.
         """
 
-        # load image as image:np.ndarray
-        image = self._load_image(image_name=self.image_name, greyscale=False, resize=False)
+        try:
+            # load image as image:np.ndarray
+            image = self._load_image(path=self.image_path, image_name=self.image_name, greyscale=False, resize=False)
 
-        self.vision_processor.process_filename = process_filename
+            self.vision_processor.process_filename = process_filename
 
-        self.vision_processor._load_process_file()
+            self.vision_processor._load_process_file()
 
-        set_parameter_success = set_camera_parameters(self.vision_processor.vision_node, 
-                                                        self.vision_processor.image_processing_handler,
-                                                        self.vision_processor.process_pipeline_list)
+            set_parameter_success = set_camera_parameters(self.vision_processor.vision_node, 
+                                                            self.vision_processor.image_processing_handler,
+                                                            self.vision_processor.process_pipeline_list)
 
-        if not set_parameter_success:
-            self.vision_processor.image_processing_handler.vision_routine_done = True
-            self.vision_processor.image_processing_handler.visionOK = False
-            error_msg = "Failed to set camera parameters."
-            self.vision_node.get_logger().error(error_msg)
-            return None, error_msg
+            if not set_parameter_success:
+                self.vision_processor.image_processing_handler.vision_routine_done = True
+                self.vision_processor.image_processing_handler.visionOK = False
+                error_msg = "Failed to set camera parameters."
+                self.vision_node.get_logger().error(error_msg)
+                return None, error_msg
 
 
-        self.vision_processor.image_processing_handler.set_image_metatdata(self.vision_processor.process_db_path,self.image_name)
-        self.vision_processor.image_processing_handler.set_initial_image(image)
+            self.vision_processor.image_processing_handler.set_image_metatdata(self.vision_processor.process_db_path,self.image_name)
+            self.vision_processor.image_processing_handler.set_initial_image(image)
 
-        display_image, vision_results = process_image(self.vision_processor.vision_node, self.vision_processor.image_processing_handler, self.vision_processor.process_pipeline_list)
-        final_image = self.vision_processor.image_processing_handler.get_processed_image_overlay()
+            display_image, vision_results = process_image(self.vision_processor.vision_node, self.vision_processor.image_processing_handler, self.vision_processor.process_pipeline_list)
+            final_image = self.vision_processor.image_processing_handler.get_processed_image_overlay()
 
-        # result_dict = vision_processor.save_vision_results()
-        vision_result_dict = self.vision_processor.image_processing_handler.get_vision_response()
+            # result_dict = vision_processor.save_vision_results()
+            vision_result_dict = self.vision_processor.image_processing_handler.get_vision_response()
 
-        process_debug = self.vision_processor.image_processing_handler.get_vision_process_debug()
-        self.vision_processor.image_processing_handler.clear_vision_process_debug()
+            process_debug = self.vision_processor.image_processing_handler.get_vision_process_debug()
+            self.vision_processor.image_processing_handler.clear_vision_process_debug()
+            
+            quality_score = self.vision_processor.image_processing_handler.get_quality_scores()
+
+            # result_dict contains the vision_result_dict and process_debug
+            result_dict = {
+                "vision_result": vision_result_dict,
+                "quality_score": quality_score,
+                "process_debug": process_debug
+            }
+
+            self.vision_node.get_logger().warn(f'process result: {result_dict}')
+            
+            # save final image
+            image_name_processed = self.image_name.replace('.png', '_processed.png')
+            self._save_image(final_image, self.image_result_path, image_name_processed)
+            
+            time.sleep(1)
+            # save a resized version
+            image_resized = self._load_image(
+                path=self.image_result_path, 
+                image_name=image_name_processed, 
+                greyscale=False, 
+                resize=True
+                )
+            
+            self._save_image(image_resized, self.image_result_path, image_name_processed.replace('.png', '_resized.png'))
+
+            # wait for 1 seconds to ensure image is saved
+            time.sleep(1)
+
+            # Build content blocks (processed image as data URL)
+            processed_data_url = self.path_to_data_url(self.image_result_path, image_name_processed, greyscale=False, resize=True)
+
+            self._save_result(path=self.image_result_path, result_dict=result_dict)
+
+            content_blocks = [
+                {"type": "text", "text": "Processed image and pipeline results."},
+                {"type": "image_url", "image_url": {"url": processed_data_url}},
+                {"type": "text", "text": f"Pipeline results: {result_dict}"}
+            ]
+
+            return content_blocks
         
-        quality_score = self.vision_processor.image_processing_handler.get_quality_scores()
-
-        # result_dict contains the vision_result_dict and process_debug
-        result_dict = {
-            "vision_result": vision_result_dict,
-            "quality_score": quality_score,
-            "process_debug": process_debug
-        }
-
-        self.vision_node.get_logger().warn(f'process result: {result_dict}')
-        
-        # save final image
-        image_name_processed = self.image_name.replace('.png', '_processed.png')
-        self._save_image(final_image, image_name_processed)
-        
-        time.sleep(1)
-        # save a resized version
-        image_resized = self._load_image(image_name=image_name_processed, greyscale=False, resize=True)
-        self._save_image(image_resized, image_name_processed.replace('.png', '_resized.png'))
-
-        # wait for 1 seconds to ensure image is saved
-        time.sleep(1)
-
-        # Build content blocks (processed image as data URL)
-        processed_data_url = self.path_to_data_url(image_name_processed, greyscale=False, resize=True)
-
-        content_blocks = [
-            {"type": "text", "text": "Processed image and pipeline results."},
-            {"type": "image_url", "image_url": {"url": processed_data_url}},
-            {"type": "text", "text": f"Pipeline results: {result_dict}"}
-        ]
-
-        return content_blocks
+        except Exception as e:
+            self.vision_node.get_logger().error(f"Error processing image: {e}")
+            return None, str(e)
         
 
 
-    def _load_image(self, image_name: str, greyscale: bool, resize: bool) -> Optional[np.ndarray]:
+    def _load_image(self, path: str, image_name: str, greyscale: bool, resize: bool) -> Optional[np.ndarray]:
         """
         Load an image with a given name.
         
         :param image_name: Name of the image file.
         :return: The loaded image as a numpy array.
         """
-        image_path = Path(self.image_path, image_name).expanduser().resolve()
+        image_path = Path(path, image_name).expanduser().resolve()
         if not os.path.exists(image_path):
             self.vision_node.get_logger().error(f"Image path does not exist: {image_path}")
             return None
@@ -249,17 +283,18 @@ class VisionHandler():
         
         return image
 
-    def _save_image(self, image: np.ndarray, image_name: str):
+    def _save_image(self, image: np.ndarray, path: str, image_name: str):
         """
         Save the processed image to the specified path.
         
         :param image: The processed image as a numpy array.
+        :param path: The directory path where the image will be saved.
         :param image_name: The name of the image file to save.
         """
-        if not os.path.exists(self.image_path):
-            os.makedirs(self.image_path)
-        
-        image_path = Path(self.image_path, image_name).expanduser().resolve()
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+        image_path = Path(path, image_name).expanduser().resolve()
         cv2.imwrite(str(image_path), image)
 
     def _get_image_dimensions(self, image: np.ndarray) -> dict:
@@ -346,4 +381,47 @@ class VisionHandler():
 
         return scales
 
+    def _save_result(self, path, result_dict):
+        """
+        Save result_dict to <path>/vision_results.json
+        - Converts complex objects to dicts
+        - If vision_result is a long 'pm_vision_interfaces.msg.VisionResponse(...)' string,
+        extracts key=value pairs at the top level into a flat dict
+        """
+
+        def make_serializable(obj):
+            """Recursively make any object JSON-serializable."""
+            if isinstance(obj, (str, int, float, bool)) or obj is None:
+                return obj
+            elif isinstance(obj, (list, tuple)):
+                return [make_serializable(i) for i in obj]
+            elif isinstance(obj, dict):
+                return {k: make_serializable(v) for k, v in obj.items()}
+            elif hasattr(obj, "to_dict"):
+                return make_serializable(obj.to_dict())
+            elif hasattr(obj, "__dict__"):
+                return make_serializable(obj.__dict__)
+            else:
+                return str(obj)
+
+        def simple_parse_vision_string(s):
+            """Very simple parser for VisionResponse(...) style strings."""
+            if not isinstance(s, str) or "VisionResponse(" not in s:
+                return s
+            s = s[s.find("(") + 1 : s.rfind(")")]  # strip outer (...)
+            matches = re.findall(r"(\w+)=([^,()]+)", s)
+            return {k: v.strip().strip("'") for k, v in matches}
+
+        # Try parsing the vision_result string if needed
+        vision_result = result_dict.get("vision_result")
+        if isinstance(vision_result, str):
+            parsed = simple_parse_vision_string(vision_result)
+            result_dict["vision_result"] = parsed
+
+        serializable = {k: make_serializable(v) for k, v in result_dict.items()}
+
+        os.makedirs(path, exist_ok=True)
+        out_path = os.path.join(path, "vision_results.json")
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(serializable, f, indent=4, ensure_ascii=False)
 

@@ -61,8 +61,8 @@ class Agent:
         self.memory = MemorySaver()
         self.config = {"configurable": {"thread_id": "1"}}    
 
-        self.vision_functions = vision_handler
-        self.available_functions = self.vision_functions.return_available_function_names()
+        self.vision_handler = vision_handler
+        self.available_functions = self.vision_handler.return_available_function_names()
 
         # Create a SystemMessagePromptTemplate using Jinja2
         system_message_template = SystemMessagePromptTemplate.from_template(
@@ -106,11 +106,16 @@ class Agent:
         # Build multimodal content blocks
         content_blocks: List[Dict[str, Any]] = [{"type": "text", "text": user_message}]
 
-        data_url = self.vision_functions.path_to_data_url(image_name, greyscale=True, resize=True)
+        data_url = self.vision_handler.path_to_data_url(
+            self.vision_handler.image_path, 
+            image_name, 
+            greyscale=True, 
+            resize=True
+            )
         content_blocks.append({"type": "image_url", "image_url": {"url": data_url}})
 
         # Compute concise image facts once
-        image_facts = self.vision_functions.compute_image_facts(image_name)
+        image_facts = self.vision_handler.compute_image_facts(image_name)
         content_blocks.append({"type": "text", "text": f"Image facts: {image_facts}"})
 
         agent_executor = self.create_executor()
