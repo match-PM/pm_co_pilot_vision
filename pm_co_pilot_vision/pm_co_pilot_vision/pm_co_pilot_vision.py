@@ -23,10 +23,10 @@ class PmCoPilotVisionNode(Node):
    
         # image_path = "/home/match-mover/Documents/ros2_ws/src/pm_vision_manager/pm_vision_manager/vision_db/test_pipeline/"
         # image_processes_path = "/home/match-mover/Documents/ros2_ws/src/pm_vision_manager/pm_vision_manager/vision_processes"
-        image_path = "/home/match-mover/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_image_db/co_pilot_tests/"
-        image_processes_path = "/home/match-mover/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_processes/co_pilot_tests"
-        # image_path = "/home/pmlab/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_image_db/test_pipeline/"
-        # image_processes_path = "/home/pmlab/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_processes"
+        # image_path = "/home/match-mover/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_image_db/co_pilot_tests/"
+        # image_processes_path = "/home/match-mover/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_processes/co_pilot_tests"
+        image_path = "/home/pmlab/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_image_db/test_pipeline/"
+        image_processes_path = "/home/pmlab/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_processes"
         
         # image_name = "fitting_hole.png"
         # image_name = "vacuum_gripper_.png"
@@ -39,26 +39,35 @@ class PmCoPilotVisionNode(Node):
             image_processes_path=image_processes_path
         )
 
-        self.agent = Agent(
-            self, 
-            vision_handler=vision_handler
-        )
-        
-        # user_prompt = "Convert the image to grayscale and add a threshold"
-        # user_prompt = "What do you see in the image? Do not perform any operations on the image, just describe it."
-        # user_prompt = "detect the circle based on the outer edge of the fitting hole"
-        user_prompt = "Detect the outer white circle of the vacuum_gripper."
-        # user_prompt = "what do you see in the image? The outer edge of the hole should be detected. Was it detected correctly? Do not perform any operations on the image, just describe it."
+        vision_handler.vision_processor.image_processing_handler.roi_used = False
+        vision_handler.vision_processor.image_processing_handler.img_width = 2592
+        vision_handler.vision_processor.image_processing_handler.img_height = 1944
+        vision_handler.vision_processor.image_processing_handler.umPROpixel = 2.1978022170666622
+        vision_handler.vision_processor.image_processing_handler.magnification = 1
+        result = vision_handler.vision_processor.image_processing_handler.CS_CV_TO_camera_with_ROI(x_value=1294, y_value=1038)
 
-        # image_describer_tool = ImageDescriberTool(
-        #     node=self,
+        self.get_logger().info(f"Result: {result}")
+
+        # self.agent = Agent(
+        #     self, 
         #     vision_handler=vision_handler
         # )
-        # response = image_describer_tool._run(user_request=user_prompt, image_name=image_name)
-        # self.get_logger().info(f"ImageDescriberTool response: {response}")
+        
+        # # user_prompt = "Convert the image to grayscale and add a threshold"
+        # # user_prompt = "What do you see in the image? Do not perform any operations on the image, just describe it."
+        # # user_prompt = "detect the circle based on the outer edge of the fitting hole"
+        # user_prompt = "Detect the outer white circle of the vacuum_gripper."
+        # # user_prompt = "what do you see in the image? The outer edge of the hole should be detected. Was it detected correctly? Do not perform any operations on the image, just describe it."
 
-        response = self.agent.handle_user_input(user_prompt, image_name=image_name)
-        self.get_logger().info(f"Agent response: {response}")
+        # # image_describer_tool = ImageDescriberTool(
+        # #     node=self,
+        # #     vision_handler=vision_handler
+        # # )
+        # # response = image_describer_tool._run(user_request=user_prompt, image_name=image_name)
+        # # self.get_logger().info(f"ImageDescriberTool response: {response}")
+
+        # response = self.agent.handle_user_input(user_prompt, image_name=image_name)
+        # self.get_logger().info(f"Agent response: {response}")
 
 
 

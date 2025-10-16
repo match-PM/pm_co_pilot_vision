@@ -69,7 +69,7 @@ class VisionHandler():
             with open(process_file_path, 'w') as f:
                 json.dump(process_file_content, f)
 
-        self.process_file = f"/co_pilot_tests/{self.pipeline_name}/{self.pipeline_name}.json"
+        self.process_file = f"co_pilot_tests/{self.pipeline_name}/{self.pipeline_name}.json"
 
 
         # self.camera_config_filename = "pm_robot_basler_top_cam_1.yaml" # Replace with actual path
@@ -78,7 +78,7 @@ class VisionHandler():
         
         self.vision_processor = VisionProcessClass(
             vision_node=self.vision_node,
-            process_filename=self.process_file,
+            process_filename="test_pipeline.json", # Placeholder, will be set in process_image
             camera_config_filename=self.camera_config_filename,
             launch_as_assistant=False, 
             process_UID='CoPilotVision',
