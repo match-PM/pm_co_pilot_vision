@@ -25,6 +25,7 @@ from pm_vision_manager.va_py_modules.vision_assistant_class import VisionProcess
 from pm_co_pilot_vision.co_pilot_modules.llm_config import LLMConfig
 
 from pm_skills.py_modules.PmRobotUtils import PmRobotUtils
+import re
 
 class VisionHandler():
 
@@ -41,6 +42,8 @@ class VisionHandler():
         self.image_result_path = image_path + "/" + self.pipeline_name + "/"
         self.image_processes_path = image_processes_path + "/" + self.pipeline_name + "/"
         self.callback_group_RE = ReentrantCallbackGroup()
+
+        self._debug_log_list = None
 
         # self.pm_robot_utils = PmRobotUtils(self)
 
@@ -202,7 +205,11 @@ class VisionHandler():
             # result_dict = vision_processor.save_vision_results()
             vision_result_dict = self.vision_processor.image_processing_handler.get_vision_response()
 
-            process_debug = self.vision_processor.image_processing_handler.get_vision_process_debug()
+            self._debug_log_list = self.vision_processor.image_processing_handler.get_vision_process_debug()
+            result_px = self._extract_and_clear_circle_logs()
+            if result_px:
+                self.vision_node.get_logger().info(f'Extracted circle logs: {result_px}')
+
             self.vision_processor.image_processing_handler.clear_vision_process_debug()
             
             quality_score = self.vision_processor.image_processing_handler.get_quality_scores()
@@ -211,7 +218,7 @@ class VisionHandler():
             result_dict = {
                 "vision_result": vision_result_dict,
                 "quality_score": quality_score,
-                "process_debug": process_debug
+                "process_debug": self._debug_log_list
             }
 
             self.vision_node.get_logger().warn(f'process result: {result_dict}')
@@ -427,3 +434,45 @@ class VisionHandler():
         with open(out_path, "w", encoding="utf-8") as f:
             json.dump(serializable, f, indent=4, ensure_ascii=False)
 
+    def _extract_and_clear_circle_logs(self):
+        """
+        Extract (x_roi, y_roi, r) triples from lines like:
+        'Circle: (1295.0373, 1037.9298), radius 220.4543'
+        and remove those lines from the handler's process debug log.
+        Returns a list of (x, y, r) as floats.
+        """
+        import re
+
+        # float (incl. .123, 123., +/- and scientific notation)
+        FLOAT = r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?"
+
+        pattern = re.compile(
+            rf"^\s*Circle:\s*\(\s*({FLOAT})\s*,\s*({FLOAT})\s*\)\s*,\s*radius\s*({FLOAT})\s*$",
+            flags=re.IGNORECASE,
+        )
+
+        # get current logs from the handler (source of truth)
+        logs = list(self.vision_processor.image_processing_handler.get_vision_process_debug() or [])
+
+        extracted: list[tuple[float, float, float]] = []
+        kept: list[str] = []
+
+        for log in logs:
+            m = pattern.match(log.strip())
+            if m:
+                x_roi, y_roi, r = map(float, m.groups())
+                extracted.append((x_roi, y_roi, r))
+            else:
+                kept.append(log)
+
+        # overwrite the handler's log with only the kept lines
+        # (no need to nuke everything with clear_vision_process_debug)
+        self.vision_processor.image_processing_handler.clear_vision_process_debug()
+        for log in kept:
+            # this exists on your handler per your snippet
+            self.vision_processor.image_processing_handler.append_vision_process_debug(log)
+
+        # also update your local cache if you keep using it later
+        self._debug_log_list = kept
+
+        return extracted
