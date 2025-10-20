@@ -23,11 +23,13 @@ class PmCoPilotVisionNode(Node):
    
         # image_path = "/home/match-mover/Documents/ros2_ws/src/pm_vision_manager/pm_vision_manager/vision_db/test_pipeline/"
         # image_processes_path = "/home/match-mover/Documents/ros2_ws/src/pm_vision_manager/pm_vision_manager/vision_processes"
-        image_path = "/home/match-mover/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_image_db/co_pilot_tests/"
-        image_processes_path = "/home/match-mover/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_processes/co_pilot_tests"
+        # image_path = "/home/match-mover/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_image_db/co_pilot_tests/"
+        # image_processes_path = "/home/match-mover/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_processes/co_pilot_tests"
         # image_path = "/home/pmlab/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_image_db/test_pipeline/"
         # image_processes_path = "/home/pmlab/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_processes"
-        
+        image_path = "/home/match-mover/Documents/ros2_ws/src/pm_vision_manager/pm_vision_manager/vision_db/co_pilot_tests/"
+        image_processes_path = "/home/match-mover/Documents/ros2_ws/src/pm_vision_manager/pm_vision_manager/vision_processes/co_pilot_tests"
+
         # image_name = "fitting_hole.png"
         # image_name = "vacuum_gripper_.png"
         image_name = "vacuum_gripper.png"
