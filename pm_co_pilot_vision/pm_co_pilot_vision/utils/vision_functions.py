@@ -201,6 +201,7 @@ class VisionHandler():
             display_image, vision_results = process_image(self.vision_processor.vision_node, self.vision_processor.image_processing_handler, self.vision_processor.process_pipeline_list)
             # final_image = self.vision_processor.image_processing_handler.get_processed_image_overlay()
             final_image = self.vision_processor.image_processing_handler.get_final_image()
+            # final_image = self.vision_processor.image_processing_handler.get_initial_image_overlay()
 
             # result_dict = vision_processor.save_vision_results()
             vision_result_dict = self.vision_processor.image_processing_handler.get_vision_response()
