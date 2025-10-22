@@ -228,7 +228,7 @@ class VisionHandler():
             image_name_processed = self.image_name.replace('.png', '_processed.png')
             self._save_image(final_image, self.image_result_path, image_name_processed)
             
-            time.sleep(1)
+            time.sleep(2)
             # save a resized version
             image_resized = self._load_image(
                 path=self.image_result_path, 
