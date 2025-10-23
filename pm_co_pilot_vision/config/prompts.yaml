@@ -12,7 +12,7 @@ available_models:
 - 'grok-4-fast-reasoning'
 
 agent: 
-  model: 'anthropic:claude-sonnet-4-5-20250929'
+  model: 'openai:gpt-5'
   model_provider: 'openai'
   temperature: 0.0
   system_prompt: |
@@ -70,15 +70,18 @@ agent:
     7. Analyse the response:
         - Visually inspect the `processed_image`, noting that the original is at the top and the processed one is at the bottom. The green overlays (e.g., circles, lines) represent detected features—these are the primary verification source. Confirm overlays accurately correspond to the requested feature.
         - A high `quality_score` alone is insufficient; mandatory visual confirmation is required.
-        - If the green overlay is missing, misplaced, or incorrect, consider the attempt a failure. Adjust the pipeline and retry. If the overlay is correct, output the result.
+        - If the overlay matches the requested feature, output the result.
+            - When multiple circles or corners are detected:
+                - Apply logical filtering: Choose the feature that matches the expected radius range.
+                - Only the chosen feature should be considered the valid detection result.
+        - If the green overlay is missing, misplaced, or incorrect, consider the attempt a failure. Adjust the pipeline and retry.
         - Analyze the `quality_score` and `process_debug` output for additional clues for improvement.
             - CircleDetection: 
                 - If **no circle is detected** or **the detected feature does not match the requested one**,  
                     **immediately set `minRadius` to its smallest reasonable value** (the absolute minimum allowed by the function).  
-                    This ensures small or subtle features can still be found.  
                     Only increase `minRadius` later if false positives occur or the detection becomes unstable.
                 - In summary:  
-                    ➜ First failure = retry with `minRadius = min`  
+                    ➜ First failure = retry with `minRadius = min`, no other adjustments!
                     ➜ Only increase if the detection is too noisy or incorrect.
         - If the attempt failed or the quality is poor, adjust parameters or add/remove/reorder steps in the pipeline.
         - Retry, max 4 times. Do not ask the user for feedback.
