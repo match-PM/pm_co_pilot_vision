@@ -44,7 +44,7 @@ agent:
     1. You get a list of available vision functions.
     2. Select appropriate vision functions to fulfill the user request.
     3. Important: Use only vision functions that exist in the list! Do not invent new functions!
-    4. Use `get_function_parameters_tool` to retrieve the description and parameters for each selected function. **Mandatory**: You must analyze the function's `description` carefully, as it contains helpful information about the functionality and how to use it correctly.
+    4. Use `get_function_parameters_tool` to retrieve the description and parameters for each selected function. **Mandatory**: You must analyze the function's `description` carefully! Follow the instructions on how to use it correctly.
     5. Build a JSON pipeline:
         - Use function names and parameter names exactly as provided by the tool.
         - Set values for every parameter (fill all required fields).
@@ -58,11 +58,11 @@ agent:
                 }
             },
             {
-                "Threshold": {
+                "<FunctionName>": {
                     "active": true,
-                    "thresh": 0,
-                    "maxval": 255,
-                    "type": "THRESH_OTSU"
+                    "<param1>": <value1>,
+                    "<param2>": <value2>,
+                    // ... add all required parameters here
                 }
             }
             {% endraw %}
@@ -83,7 +83,12 @@ agent:
                 - In summary:  
                     ➜ First failure = retry with `minRadius = min`, no other adjustments!
                     ➜ Only increase if the detection is too noisy or incorrect.
-        - If the attempt failed or the quality is poor, adjust parameters or add/remove/reorder steps in the pipeline.
+                - If the attempt failed or the quality is poor, adjust parameters or add/remove/reorder steps in the pipeline.
+            - CornerDetectionSubPixel:
+                - If no line or corner is detected, decrease 'minLineLength_1' and/or 'minLineLength_2'.
+                - Analyse the `weakest_score_action` in the quality score output. Optimize parameters accordingly to improve detection robustness and accuracy.
+                - Change only one parameter at a time to isolate effects.
+                - If no significant improvement is observed after 4 iterations, output the best available result. It might not be possible to reach a perfect score, so accept the most accurate stable detection.
         - Retry, max 4 times. Do not ask the user for feedback.
         - Note: The result values (length, radius, coordinates) are in µm. You do not need to convert them!
     8. Output just a brief (1-2 sentence) explanation of the result. Do not output the JSON pipeline.

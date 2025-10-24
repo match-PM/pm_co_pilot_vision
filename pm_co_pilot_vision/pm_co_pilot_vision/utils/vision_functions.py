@@ -14,7 +14,7 @@ from pathlib import Path
 import numpy as np
 import uuid
 from ament_index_python.packages import get_package_share_directory
-from typing import Optional
+from typing import Optional, TypedDict
 
 from rclpy.callback_groups import ReentrantCallbackGroup, MutuallyExclusiveCallbackGroup
 from rclpy.qos import QoSProfile, QoSDurabilityPolicy, QoSReliabilityPolicy, QoSHistoryPolicy, qos_profile_sensor_data
@@ -207,13 +207,14 @@ class VisionHandler():
             vision_result_dict = self.vision_processor.image_processing_handler.get_vision_response()
 
             self._debug_log_list = self.vision_processor.image_processing_handler.get_vision_process_debug()
-            result_px = self._extract_and_clear_circle_logs()
+            result_px = self._extract_and_clear_vision_logs()
             if result_px:
-                self.vision_node.get_logger().info(f'Extracted circle logs: {result_px}')
+                self.vision_node.get_logger().info(f'Extracted vision logs: {result_px}')
 
             self.vision_processor.image_processing_handler.clear_vision_process_debug()
             
             quality_score = self.vision_processor.image_processing_handler.get_quality_scores()
+            self.vision_processor.image_processing_handler.delete_quality_scores()
 
             # result_dict contains the vision_result_dict and process_debug
             result_dict = {
@@ -435,45 +436,110 @@ class VisionHandler():
         with open(out_path, "w", encoding="utf-8") as f:
             json.dump(serializable, f, indent=4, ensure_ascii=False)
 
-    def _extract_and_clear_circle_logs(self):
+    def _extract_and_clear_vision_logs(self):
         """
-        Extract (x_roi, y_roi, r) triples from lines like:
+        Extract vision features (circles, corners) from lines like:
         'Circle: (1295.0373, 1037.9298), radius 220.4543'
+        'Corner: (100.0, 200.0)'
         and remove those lines from the handler's process debug log.
-        Returns a list of (x, y, r) as floats.
+        
+        Returns a dictionary:
+        {
+            "circles": [(x, y, r), ...],
+            "corners": [(x, y), ...]
+        }
         """
-        import re
 
         # float (incl. .123, 123., +/- and scientific notation)
         FLOAT = r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?"
 
-        pattern = re.compile(
+        pattern_circle = re.compile(
             rf"^\s*Circle:\s*\(\s*({FLOAT})\s*,\s*({FLOAT})\s*\)\s*,\s*radius\s*({FLOAT})\s*$",
+            flags=re.IGNORECASE,
+        )
+        
+        # New pattern for corners
+        pattern_corner = re.compile(
+            rf"^\s*Corner:\s*\(\s*({FLOAT})\s*,\s*({FLOAT})\s*\)\s*$",
             flags=re.IGNORECASE,
         )
 
         # get current logs from the handler (source of truth)
         logs = list(self.vision_processor.image_processing_handler.get_vision_process_debug() or [])
 
-        extracted: list[tuple[float, float, float]] = []
+        # Initialize lists for both types of features
+        extracted_circles: list[tuple[float, float, float]] = []
+        extracted_corners: list[tuple[float, float]] = []
         kept: list[str] = []
 
         for log in logs:
-            m = pattern.match(log.strip())
-            if m:
-                x_roi, y_roi, r = map(float, m.groups())
-                extracted.append((x_roi, y_roi, r))
-            else:
-                kept.append(log)
+            log_stripped = log.strip()
+            
+            m_circle = pattern_circle.match(log_stripped)
+            if m_circle:
+                x_roi, y_roi, r = map(float, m_circle.groups())
+                extracted_circles.append((x_roi, y_roi, r))
+                continue # Go to the next log line
+
+            m_corner = pattern_corner.match(log_stripped)
+            if m_corner:
+                x, y = map(float, m_corner.groups())
+                extracted_corners.append((x, y))
+                continue # Go to the next log line
+                
+            # If neither pattern matched, keep the log
+            kept.append(log)
 
         # overwrite the handler's log with only the kept lines
-        # (no need to nuke everything with clear_vision_process_debug)
         self.vision_processor.image_processing_handler.clear_vision_process_debug()
         for log in kept:
-            # this exists on your handler per your snippet
             self.vision_processor.image_processing_handler.append_vision_process_debug(log)
 
-        # also update your local cache if you keep using it later
+        # also update your local cache
         self._debug_log_list = kept
 
-        return extracted
+        # Return a dictionary containing both lists
+        return {"circles": extracted_circles, "corners": extracted_corners}
+    
+
+    # def _extract_and_clear_circle_logs(self):
+    #     """
+    #     Extract (x_roi, y_roi, r) triples from lines like:
+    #     'Circle: (1295.0373, 1037.9298), radius 220.4543'
+    #     and remove those lines from the handler's process debug log.
+    #     Returns a list of (x, y, r) as floats.
+    #     """
+
+    #     # float (incl. .123, 123., +/- and scientific notation)
+    #     FLOAT = r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?"
+
+    #     pattern = re.compile(
+    #         rf"^\s*Circle:\s*\(\s*({FLOAT})\s*,\s*({FLOAT})\s*\)\s*,\s*radius\s*({FLOAT})\s*$",
+    #         flags=re.IGNORECASE,
+    #     )
+
+    #     # get current logs from the handler (source of truth)
+    #     logs = list(self.vision_processor.image_processing_handler.get_vision_process_debug() or [])
+
+    #     extracted: list[tuple[float, float, float]] = []
+    #     kept: list[str] = []
+
+    #     for log in logs:
+    #         m = pattern.match(log.strip())
+    #         if m:
+    #             x_roi, y_roi, r = map(float, m.groups())
+    #             extracted.append((x_roi, y_roi, r))
+    #         else:
+    #             kept.append(log)
+
+    #     # overwrite the handler's log with only the kept lines
+    #     # (no need to nuke everything with clear_vision_process_debug)
+    #     self.vision_processor.image_processing_handler.clear_vision_process_debug()
+    #     for log in kept:
+    #         # this exists on your handler per your snippet
+    #         self.vision_processor.image_processing_handler.append_vision_process_debug(log)
+
+    #     # also update your local cache if you keep using it later
+    #     self._debug_log_list = kept
+
+    #     return extracted

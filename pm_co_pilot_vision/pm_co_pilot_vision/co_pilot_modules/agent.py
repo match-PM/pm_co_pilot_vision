@@ -1,3 +1,4 @@
+from datetime import datetime
 import json
 from rclpy.node import Node
 from typing import List, Dict, Any, Type, Optional
@@ -129,6 +130,7 @@ class Agent:
         
         ai_message = response["messages"][-1]   # The last message should be the response
         self.node.get_logger().info(f"Agent response: {ai_message}")
+        self.save_token_usage_summary(response, self.vision_handler.image_processes_path)
         response = ai_message.content
         return response
     
@@ -140,3 +142,90 @@ class Agent:
             prompt=self.prompt
         )
     
+    def save_token_usage_summary(self, response: Dict[str, Any], save_path: str):
+        """
+        Extracts token usage data from the agent response and saves it as a 
+        timestamped JSON file.
+
+        It checks multiple locations to find the usage data:
+        1. ai_message.usage_metadata (standardized LangChain attribute)
+        2. ai_message.response_metadata['token_usage'] (OpenAI format)
+        3. ai_message.response_metadata['usage'] (Anthropic/Claude format)
+
+        Args:
+            response: The full dictionary response from agent_executor.invoke().
+            save_path: The directory path where the summary file will be saved.
+        """
+        
+        # 1. Get the last AI message from the response dictionary
+        try:
+            # The last message should be the AIMessage with the metadata
+            ai_message = response["messages"][-1]
+        except (KeyError, IndexError, TypeError):
+            self.node.get_logger().warn(
+                "Could not find last message in 'response[\"messages\"]'. "
+                "Cannot save token summary."
+            )
+            return
+
+        # 2. Extract the token usage data from various possible locations.
+        usage_data = None
+        
+        # Try standard 'usage_metadata' attribute first
+        # This is the preferred, standardized LangChain location
+        if hasattr(ai_message, 'usage_metadata') and ai_message.usage_metadata:
+            usage_data = ai_message.usage_metadata
+            self.node.get_logger().info("Found token data in 'ai_message.usage_metadata'.")
+        
+        # If not found, check model-specific 'response_metadata'
+        elif (hasattr(ai_message, 'response_metadata') and 
+            isinstance(ai_message.response_metadata, dict)):
+            
+            # Check for OpenAI format
+            if 'token_usage' in ai_message.response_metadata:
+                usage_data = ai_message.response_metadata.get('token_usage')
+                self.node.get_logger().info("Found token data in 'ai_message.response_metadata.token_usage' (OpenAI format).")
+                
+            # Check for Anthropic/Claude format
+            elif 'usage' in ai_message.response_metadata:
+                usage_data = ai_message.response_metadata.get('usage')
+                self.node.get_logger().info("Found token data in 'ai_message.response_metadata.usage' (Anthropic format).")
+
+        # 3. If still no data, log a warning and exit.
+        if usage_data is None:
+            self.node.get_logger().warn(
+                "Could not find token usage data in 'ai_message.usage_metadata', "
+                "'response_metadata.token_usage', or 'response_metadata.usage'. "
+                "Cannot save token summary."
+            )
+            return
+
+        # 2. Ensure the save directory exists.
+        try:
+            os.makedirs(save_path, exist_ok=True)
+        except OSError as e:
+            self.node.get_logger().error(
+                f"Failed to create directory at {save_path}: {e}"
+            )
+            return
+
+        # 3. Create a unique filename with a timestamp.
+        filename = f"token_usage.json"
+        full_save_path = os.path.join(save_path, filename)
+
+        # 4. Write the data to the JSON file.
+        try:
+            with open(full_save_path, 'w') as f:
+                json.dump(usage_data, f, indent=4)
+                
+            self.node.get_logger().info(
+                f"Token usage summary saved to: {full_save_path}"
+            )
+        except IOError as e:
+            self.node.get_logger().error(
+                f"Failed to write token summary to {full_save_path}: {e}"
+            )
+        except Exception as e:
+            self.node.get_logger().error(
+                f"An unexpected error occurred while saving token summary: {e}"
+            )

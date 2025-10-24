@@ -31,8 +31,8 @@ class PmCoPilotVisionNode(Node):
         image_processes_path = "/home/match-mover/Documents/ros2_ws/src/pm_vision_manager/pm_vision_manager/vision_processes/co_pilot_tests"
 
         # image_name = "fitting_hole.png"
-        # image_name = "vacuum_gripper_.png"
-        image_name = "vacuum_gripper.png"
+        image_name = "sensor_corner.png"
+        # image_name = "vacuum_gripper.png"
 
         vision_handler = VisionHandler(
             vision_node=self, 
@@ -49,7 +49,8 @@ class PmCoPilotVisionNode(Node):
         # user_prompt = "Convert the image to grayscale and add a threshold"
         # user_prompt = "What do you see in the image? Do not perform any operations on the image, just describe it."
         # user_prompt = "detect the circle based on the outer edge of the fitting hole"
-        user_prompt = "Detect the outer white circle of the vacuum_gripper."
+        # user_prompt = "Detect the outer white circle of the vacuum_gripper."
+        user_prompt = "Detect the corner of the sensor in the image."
         # user_prompt = "what do you see in the image? The outer edge of the hole should be detected. Was it detected correctly? Do not perform any operations on the image, just describe it."
 
         # image_describer_tool = ImageDescriberTool(
