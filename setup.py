@@ -4,13 +4,11 @@ package_name = 'pm_co_pilot_vision'
 modules = "pm_co_pilot_vision/co_pilot_modules"
 tools = "pm_co_pilot_vision/co_pilot_modules/tools"
 utils = "pm_co_pilot_vision/utils"
-files = 'files'
-config = 'config'
 
 setup(
     name=package_name,
     version='0.0.0',
-    packages=[package_name, modules, tools, utils, files, config],
+    packages=[package_name, modules, tools, utils],
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),

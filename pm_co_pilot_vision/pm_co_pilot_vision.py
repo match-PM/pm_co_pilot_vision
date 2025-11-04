@@ -18,8 +18,6 @@ class PmCoPilotVisionNode(Node):
 
     def __init__(self):
         super().__init__('pm_co_pilot_vision_node')
-
-        # image_path = os.path.join("/home/match-mover/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_processes/", image_name)
    
         # image_path = "/home/match-mover/Documents/ros2_ws/src/pm_vision_manager/pm_vision_manager/vision_db/test_pipeline/"
         # image_processes_path = "/home/match-mover/Documents/ros2_ws/src/pm_vision_manager/pm_vision_manager/vision_processes"
@@ -30,7 +28,6 @@ class PmCoPilotVisionNode(Node):
         image_path = "/home/match-mover/Documents/ros2_ws/src/pm_vision_manager/pm_vision_manager/vision_db/co_pilot_tests/"
         image_processes_path = "/home/match-mover/Documents/ros2_ws/src/pm_vision_manager/pm_vision_manager/vision_processes/co_pilot_tests"
 
-        # image_name = "fitting_hole.png"
         image_name = "sensor_corner.png"
         # image_name = "vacuum_gripper.png"
 
@@ -45,13 +42,9 @@ class PmCoPilotVisionNode(Node):
             self, 
             vision_handler=vision_handler
         )
-        
-        # user_prompt = "Convert the image to grayscale and add a threshold"
-        # user_prompt = "What do you see in the image? Do not perform any operations on the image, just describe it."
-        # user_prompt = "detect the circle based on the outer edge of the fitting hole"
+
         # user_prompt = "Detect the outer white circle of the vacuum_gripper."
         user_prompt = "Detect the corner of the sensor in the image."
-        # user_prompt = "what do you see in the image? The outer edge of the hole should be detected. Was it detected correctly? Do not perform any operations on the image, just describe it."
 
         # image_describer_tool = ImageDescriberTool(
         #     node=self,
