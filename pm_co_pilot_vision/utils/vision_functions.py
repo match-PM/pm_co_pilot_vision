@@ -47,8 +47,23 @@ class VisionHandler():
 
         # self.pm_robot_utils = PmRobotUtils(self)
 
-        path = get_package_share_directory("pm_co_pilot_vision")
-        vision_functions_json = f"{path}/vision_functions.json"
+        # Resolve vision_functions.json: prefer installed share dir, fallback to repo files/
+        try:
+            path = get_package_share_directory("pm_co_pilot_vision")
+            vision_functions_json = f"{path}/vision_functions.json"
+        except Exception as e:
+            # Fallback to local repository path when running from source
+            pkg_root = Path(__file__).resolve().parent.parent
+            vision_functions_json = str(pkg_root / "files" / "vision_functions.json")
+            try:
+                self.vision_node.get_logger().warn(
+                    f"Using local vision_functions.json at '{vision_functions_json}' (install not sourced?): {e}"
+                )
+            except Exception:
+                pass
+
+        if not os.path.exists(vision_functions_json):
+            raise FileNotFoundError(f"vision_functions.json not found at {vision_functions_json}")
 
         with open(vision_functions_json, 'r') as f:
             self.vision_functions = json.load(f)

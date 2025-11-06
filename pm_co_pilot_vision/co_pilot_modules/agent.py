@@ -1,7 +1,7 @@
 from datetime import datetime
 import json
 from rclpy.node import Node
-from typing import List, Dict, Any, Type, Optional
+from typing import List, Dict, Any, Type
 from pydantic import BaseModel, Field
 from langchain.agents import AgentExecutor, create_openai_tools_agent
 from langchain_core.messages import HumanMessage, AIMessage, FunctionMessage
@@ -25,6 +25,13 @@ from .tools.vision_tools import Tools
 from pm_co_pilot_vision.utils.vision_functions import VisionHandler
 from .llm_config import LLMConfig
 from ament_index_python.packages import get_package_share_directory
+from enum import Enum
+
+
+class FunctionsView(Enum):
+    """Controls how available functions are exposed to the LLM."""
+    NAMES_ONLY = "get_functions"   # compact list of function names
+    FULL_SPECS = "all_functions"   # full function specifications/JSON
 
 
 class Agent:
@@ -33,27 +40,25 @@ class Agent:
     It handles the conversation history and the tools available to the LLM.
     """
 
-    def __init__(self, node: Node, vision_handler: VisionHandler):
+    def __init__(
+        self,
+        node: Node,
+        vision_handler: VisionHandler,
+        *,
+        functions_view: FunctionsView = FunctionsView.NAMES_ONLY,
+    ):
         super().__init__()
 
         self.node = node
         self.node.get_logger().info("Agent __init__ called.")
+        
+        # Determine how to expose available functions
+        resolved_view: FunctionsView = functions_view
 
-        # try:
-        #     path = get_package_share_directory("pm_co_pilot_vision")
-        #     prompt = path + '/prompts.yaml'
-        #     with open(prompt, 'r') as file:
-        #         config_data = yaml.safe_load(file)
-        #         tool = config_data['agent']
-        #         self.model = tool['model']
-        #         self.model_provider = tool['model_provider']
-        #         self.temperature = tool['temperature']
-        #         raw_system_prompt = tool['system_prompt']
-        # except Exception as e:
-        #     self.node.get_logger().error(f"Error loading prompts.yaml: {e}")
-        #     raise
-
-        llm_config = LLMConfig("agent")
+        if resolved_view == FunctionsView.NAMES_ONLY:
+            llm_config = LLMConfig("agent_get_functions")
+        else:  # FunctionsView.FULL_SPECS
+            llm_config = LLMConfig("agent_all_functions")
         self.model = llm_config.model
         self.model_provider = llm_config.model_provider
         raw_system_prompt = llm_config.system_prompt
@@ -77,9 +82,14 @@ class Agent:
             MessagesPlaceholder(variable_name="messages")
         ])
 
-        funcs_str = "```json\n" + self.available_functions + "\n```"
+
+
+        if resolved_view == FunctionsView.NAMES_ONLY:
+            funcs_str = "```json\n" + self.available_functions + "\n```"
+        else:  # FunctionsView.FULL_SPECS
+            funcs_str = "```json\n" + json.dumps(self.vision_handler.vision_functions) + "\n```"
+
         self.prompt = base_prompt.partial(available_functions=funcs_str)
-        # self.prompt = base_prompt.partial(resize_factor_preview=VisionHandler.RESIZE_FACTOR)
 
         self.node.get_logger().info(f"System Prompt: {self.prompt}")
 

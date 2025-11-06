@@ -4,11 +4,12 @@ package_name = 'pm_co_pilot_vision'
 modules = "pm_co_pilot_vision/co_pilot_modules"
 tools = "pm_co_pilot_vision/co_pilot_modules/tools"
 utils = "pm_co_pilot_vision/utils"
+gui = "pm_co_pilot_vision/gui"
 
 setup(
     name=package_name,
     version='0.0.0',
-    packages=[package_name, modules, tools, utils],
+    packages=[package_name, modules, tools, utils, gui],
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
@@ -27,7 +28,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'pm_co_pilot_vision = pm_co_pilot_vision.pm_co_pilot_vision:main'
+            'pm_co_pilot_vision = pm_co_pilot_vision.pm_co_pilot_vision:main',
+            'pm_co_pilot_vision_gui = pm_co_pilot_vision.gui.agent_gui:main',
         ],
     },
 )
