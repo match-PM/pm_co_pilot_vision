@@ -1,7 +1,7 @@
 from datetime import datetime
 import json
 from rclpy.node import Node
-from typing import List, Dict, Any, Type
+from typing import List, Dict, Any, Type, Optional
 from pydantic import BaseModel, Field
 from langchain.agents import AgentExecutor, create_openai_tools_agent
 from langchain_core.messages import HumanMessage, AIMessage, FunctionMessage
@@ -46,6 +46,7 @@ class Agent:
         vision_handler: VisionHandler,
         *,
         functions_view: FunctionsView = FunctionsView.NAMES_ONLY,
+        model: Optional[str] = None,
     ):
         super().__init__()
 
@@ -58,11 +59,14 @@ class Agent:
         if resolved_view == FunctionsView.NAMES_ONLY:
             llm_config = LLMConfig("agent_get_functions")
         else:  # FunctionsView.FULL_SPECS
-            llm_config = LLMConfig("agent_all_functions")
+            llm_config = LLMConfig("agent")
         self.model = llm_config.model
         self.model_provider = llm_config.model_provider
         raw_system_prompt = llm_config.system_prompt
         self.temperature = llm_config.temperature
+
+        if model is not None:
+            self.model = model
 
         self.memory = MemorySaver()
         self.config = {"configurable": {"thread_id": "1"}}    

@@ -214,7 +214,7 @@ class VisionHandler():
             self.vision_processor.image_processing_handler.set_initial_image(image)
 
             display_image, vision_results = process_image(self.vision_processor.vision_node, self.vision_processor.image_processing_handler, self.vision_processor.process_pipeline_list)
-            # final_image = self.vision_processor.image_processing_handler.get_processed_image_overlay()
+            image_overlay = self.vision_processor.image_processing_handler.get_processed_image_overlay()
             final_image = self.vision_processor.image_processing_handler.get_final_image()
             # final_image = self.vision_processor.image_processing_handler.get_initial_image_overlay()
 
@@ -243,6 +243,13 @@ class VisionHandler():
             # save final image
             image_name_processed = self.image_name.replace('.png', '_processed.png')
             self._save_image(final_image, self.image_result_path, image_name_processed)
+            # also persist overlay separately for GUI display (non-destructive)
+            if image_overlay is not None:
+                overlay_name = self.image_name.replace('.png', '_overlay.png')
+                try:
+                    self._save_image(image_overlay, self.image_result_path, overlay_name)
+                except Exception as e:
+                    self.vision_node.get_logger().warn(f"Failed to save overlay image: {e}")
             
             time.sleep(2)
             # save a resized version
