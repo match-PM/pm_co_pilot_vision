@@ -24,7 +24,6 @@ from pm_vision_manager.va_py_modules.vision_assistant_class import VisionProcess
 
 from pm_co_pilot_vision.co_pilot_modules.llm_config import LLMConfig
 
-from pm_skills.py_modules.PmRobotUtils import PmRobotUtils
 import re
 
 class VisionHandler():

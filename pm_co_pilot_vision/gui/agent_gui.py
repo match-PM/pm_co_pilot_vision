@@ -18,12 +18,14 @@ try:
         QPushButton,
         QFileDialog,
         QComboBox,
-    QGridLayout,
-    QHBoxLayout,
+        QGridLayout,
+        QHBoxLayout,
         QVBoxLayout,
         QScrollArea,
         QMessageBox,
         QFrame,
+        QSplitter,
+        QGroupBox,
     )
     from PyQt6.QtCore import Qt, QObject, pyqtSignal, QThread, QTimer
     from PyQt6.QtGui import QPixmap
@@ -128,6 +130,31 @@ class AgentWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("PM Co-Pilot Vision - Agent GUI")
         self.resize(900, 650)
+        # App styling for a cleaner look
+        self.setStyleSheet(
+            """
+            QMainWindow { background: #f6f7fb; }
+            QGroupBox { font-weight: 600; border: 1px solid #ccd; border-radius: 6px; margin-top: 10px; padding: 8px 10px 10px 10px; }
+            QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 4px; color: #334; }
+            QLabel { color: #223; }
+            /* Inputs */
+            QLineEdit, QComboBox, QTextEdit { background: #fff; color: #222; border: 1px solid #ccd; border-radius: 4px; padding: 6px; }
+            QComboBox:hover { border-color: #2f6feb; background: #fff; color: #222; }
+            /* Combo popup (covers QListView/QTreeView used by QComboBox) */
+            QComboBox QAbstractItemView, QListView, QTreeView {
+                background: #ffffff; color: #222; outline: none;
+                selection-background-color: #2f6feb; selection-color: #fff;
+            }
+            QComboBox QAbstractItemView::item, QListView::item, QTreeView::item { padding: 4px 8px; color: #222; }
+            QComboBox QAbstractItemView::item:hover, QListView::item:hover, QTreeView::item:hover { background: #e8f0fe; color: #222; }
+            QComboBox QAbstractItemView::item:selected, QListView::item:selected, QTreeView::item:selected { background: #2f6feb; color: #ffffff; }
+            /* Buttons */
+            QPushButton { background: #2f6feb; color: white; border: none; border-radius: 5px; padding: 8px 14px; }
+            QPushButton:disabled { background: #aab; color: #eee; }
+            QPushButton:hover:!disabled { background: #1f5fd8; }
+            """
+        )
+        self.statusBar().showMessage("Ready")
 
         # ROS2 init and node
         self._owns_rcl = False
@@ -190,13 +217,15 @@ class AgentWindow(QMainWindow):
         self.overlay_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.overlay_scroll.setFrameShape(QFrame.Shape.NoFrame)
 
-        # Layout restructure: horizontal split (left form, right images)
+        # Layout restructure: split view (left form, right images)
         central = QWidget()
         main_layout = QHBoxLayout(central)
+        main_layout.setContentsMargins(12, 12, 12, 12)
+        main_layout.setSpacing(10)
 
         form_container = QWidget()
         form_layout = QGridLayout(form_container)
-        form_container.setMaximumWidth(420)
+        form_container.setMaximumWidth(480)
         row = 0
         form_layout.addWidget(QLabel("FunctionsView:"), row, 0)
         form_layout.addWidget(self.view_combo, row, 1)
@@ -218,19 +247,34 @@ class AgentWindow(QMainWindow):
         form_layout.setColumnStretch(0, 0)
         form_layout.setColumnStretch(1, 1)
 
-        # Image panel
-        image_panel = QVBoxLayout()
-        image_panel.addWidget(QLabel("Original"))
-        image_panel.addWidget(self.original_scroll)
-        image_panel.addWidget(QLabel("Overlay"))
-        image_panel.addWidget(self.overlay_scroll)
+        # Controls group
+        controls_group = QGroupBox("Controls")
+        controls_group.setLayout(form_layout)
 
-        main_layout.addWidget(form_container)
-        # spacer/stretch between panels
-        main_layout.addSpacing(8)
-        images_container = QWidget()
-        images_container.setLayout(image_panel)
-        main_layout.addWidget(images_container, 1)
+        # Image groups
+        original_group = QGroupBox("Original")
+        og_layout = QVBoxLayout(original_group)
+        og_layout.addWidget(self.original_scroll)
+
+        overlay_group = QGroupBox("Overlay")
+        oy_layout = QVBoxLayout(overlay_group)
+        oy_layout.addWidget(self.overlay_scroll)
+
+        images_group = QGroupBox("Preview")
+        images_v = QVBoxLayout(images_group)
+        images_v.setContentsMargins(8, 8, 8, 8)
+        images_v.setSpacing(10)
+        images_v.addWidget(original_group)
+        images_v.addWidget(overlay_group)
+
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.addWidget(controls_group)
+        splitter.addWidget(images_group)
+        splitter.setStretchFactor(0, 0)
+        splitter.setStretchFactor(1, 1)
+        splitter.setSizes([380, 800])
+
+        main_layout.addWidget(splitter)
 
         self.setCentralWidget(central)
 
