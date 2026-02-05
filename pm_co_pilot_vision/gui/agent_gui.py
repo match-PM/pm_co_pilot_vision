@@ -173,6 +173,9 @@ class AgentWindow(QMainWindow):
         self.image_name_edit = QLineEdit()
         self.image_name_edit.setPlaceholderText("Enter image filename (e.g., sensor_corner.png)")
 
+        self.browse_btn = QPushButton("Browse...")
+        self.browse_btn.clicked.connect(self._browse_for_image)
+
         self.view_combo = QComboBox()
         self.view_combo.addItem("Names only", FunctionsView.NAMES_ONLY)
         self.view_combo.addItem("Full specs", FunctionsView.FULL_SPECS)
@@ -234,7 +237,10 @@ class AgentWindow(QMainWindow):
         form_layout.addWidget(self.model_combo, row, 1)
         row += 1
         form_layout.addWidget(QLabel("Image name:"), row, 0)
-        form_layout.addWidget(self.image_name_edit, row, 1)
+        image_row_layout = QHBoxLayout()
+        image_row_layout.addWidget(self.image_name_edit)
+        image_row_layout.addWidget(self.browse_btn)
+        form_layout.addLayout(image_row_layout, row, 1)
         row += 1
         form_layout.addWidget(QLabel("User prompt:"), row, 0, Qt.AlignmentFlag.AlignTop)
         form_layout.addWidget(self.prompt_edit, row, 1)
@@ -289,7 +295,85 @@ class AgentWindow(QMainWindow):
             super().closeEvent(event)
 
     # --- UI actions ---
-    # No file/directory browsing required in the simplified flow
+
+    def _browse_for_image(self):
+        """Open file dialog to browse and select an image file."""
+        # Load last used directory from config
+        last_dir = self._load_last_image_directory()
+        if not last_dir or not Path(last_dir).is_dir():
+            last_dir = self._default_image_path()
+        
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select Image",
+            last_dir,
+            "Image Files (*.png *.jpg *.jpeg *.bmp *.tiff);;All Files (*)"
+        )
+        
+        if file_path:
+            file_path_obj = Path(file_path)
+            # Set image name in the text field
+            self.image_name_edit.setText(file_path_obj.name)
+            
+            # Save the directory for next time
+            parent_dir = str(file_path_obj.parent)
+            self._save_last_image_directory(parent_dir)
+            
+            # Display the image in original image field
+            self._load_original_image(parent_dir, file_path_obj.name)
+            
+            self.statusBar().showMessage(f"Loaded: {file_path_obj.name}")
+
+    def _load_last_image_directory(self) -> str:
+        """Load last used image directory from gui_config.yaml."""
+        try:
+            from ament_index_python.packages import get_package_share_directory
+            share_dir = get_package_share_directory('pm_co_pilot_vision')
+            config_path = Path(share_dir) / 'config' / 'gui_config.yaml'
+        except Exception:
+            # Fallback to repo path
+            config_path = Path(__file__).resolve().parents[2] / 'config' / 'gui_config.yaml'
+        
+        if config_path.exists():
+            try:
+                with open(config_path, 'r') as f:
+                    config = yaml.safe_load(f) or {}
+                    return config.get('gui_settings', {}).get('last_image_directory', '')
+            except Exception as e:
+                self.node.get_logger().warning(f"Failed to load GUI config: {e}")
+        return ''
+
+    def _save_last_image_directory(self, directory: str):
+        """Save last used image directory to gui_config.yaml."""
+        try:
+            from ament_index_python.packages import get_package_share_directory
+            share_dir = get_package_share_directory('pm_co_pilot_vision')
+            config_path = Path(share_dir) / 'config' / 'gui_config.yaml'
+        except Exception:
+            # Fallback to repo path
+            config_path = Path(__file__).resolve().parents[2] / 'config' / 'gui_config.yaml'
+        
+        try:
+            # Load existing config or create new
+            if config_path.exists():
+                with open(config_path, 'r') as f:
+                    config = yaml.safe_load(f) or {}
+            else:
+                config = {}
+            
+            # Update last directory
+            if 'gui_settings' not in config:
+                config['gui_settings'] = {}
+            config['gui_settings']['last_image_directory'] = directory
+            
+            # Ensure directory exists
+            config_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Save back to file
+            with open(config_path, 'w') as f:
+                yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+        except Exception as e:
+            self.node.get_logger().warning(f"Failed to save GUI config: {e}")
 
     def _run_agent(self):
         prompt = self.prompt_edit.toPlainText().strip()
@@ -305,7 +389,13 @@ class AgentWindow(QMainWindow):
             QMessageBox.warning(self, "Missing image name", "Please enter an image file name (e.g., sensor_corner.png).")
             return
 
-        image_path = self._default_image_path()
+        # Try to use the last browsed directory first, fallback to default
+        last_dir = self._load_last_image_directory()
+        if last_dir and Path(last_dir).is_dir():
+            image_path = last_dir
+        else:
+            image_path = self._default_image_path()
+        
         image_proc_dir = self._default_process_dir() or image_path
 
         # Validate image existence early to provide a clear error

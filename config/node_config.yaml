@@ -1,0 +1,16 @@
+# Configuration for node mode execution
+# This file defines the settings used when running in node mode (headless with automated prompt execution)
+
+node_mode:
+  # Path to the directory containing input images
+  image_path: "/home/match-mover/Documents/ros2_ws/src/pm_vision_manager/pm_vision_manager/vision_db/co_pilot_tests/"
+  
+  # Path to the directory where vision processing results will be saved
+  image_processes_path: "/home/match-mover/Documents/ros2_ws/src/pm_vision_manager/pm_vision_manager/vision_processes/co_pilot_tests"
+  
+  # Name of the image file to process
+  image_name: "sensor_corner.png"
+  
+  # User prompt/instruction for the vision agent
+  user_prompt: "Detect the corner of the sensor in the image."
+

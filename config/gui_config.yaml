@@ -1,0 +1,6 @@
+# Configuration for GUI mode
+# This file stores persistent GUI settings like last used directories
+
+gui_settings:
+  # Last directory from which an image was selected
+  last_image_directory: ""

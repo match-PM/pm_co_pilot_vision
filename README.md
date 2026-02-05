@@ -1,25 +1,30 @@
 # pm_co_pilot_vision
 
-ROS 2 package that provides a Co‑Pilot Vision agent with a PyQt6 GUI. It lets you run a configurable vision pipeline on an image, visualize the live overlay produced by the pipeline, and interact with the agent via LLM-backed tools.
+ROS 2 package that provides a Co‑Pilot Vision agent with two operating modes: an interactive PyQt6 GUI and a headless node mode for automated execution. It runs configurable vision pipelines on images, visualizes live overlays, and interacts with the agent via LLM-backed tools.
 
-The package is designed to work both from an installed ROS share (installed with colcon) and directly from source during development. Key assets such as `prompts.yaml` and `vision_functions.json` are resolved from the package install path with a safe fallback to the local repository.
+The package is designed to work both from an installed ROS share (installed with colcon) and directly from source during development. Key assets such as `prompts.yaml`, `node_config.yaml`, `gui_config.yaml`, and `vision_functions.json` are resolved from the package install path with a safe fallback to the local repository.
 
 ## Highlights
 
-- PyQt6 GUI: enter the image name, select the tool view (FunctionsView), pick a model from `prompts.yaml`, and run the agent.
-- Live overlay preview: the pipeline writes an overlay image during processing; the GUI watches and refreshes it automatically.
-- Final vs overlay: the pipeline’s final output image is still saved and used by the agent, while the GUI displays the overlay so you can see intermediate annotations.
-- ROS 2 node lifecycle: the GUI hosts a ROS2 node; it can be launched directly or from a ROS entry point.
+- **Dual Modes**:
+  - **GUI Mode** (default): Interactive PyQt6 interface with image browsing, live overlay preview, and manual prompt entry
+  - **Node Mode**: Headless execution with settings from `node_config.yaml` for automated workflows
+- **Image Browsing**: Browse and select images directly from the GUI with persistent directory memory
+- **Live Overlay Preview**: Pipeline writes overlay images during processing; GUI watches and refreshes automatically
+- **Configuration-Driven**: All settings (paths, prompts, models) configurable via YAML files
+- **ROS 2 Integration**: Full ROS2 node lifecycle support with launch file arguments
 
 ## Repository layout
 
-- `pm_co_pilot_vision/gui/agent_gui.py` — PyQt6 GUI (right pane shows Original on top and Overlay at the bottom).
-- `pm_co_pilot_vision/pm_co_pilot_vision.py` — entry point that can launch the GUI inside a ROS2 node context.
-- `pm_co_pilot_vision/co_pilot_modules/agent.py` — the Agent wrapper, with `FunctionsView` enum and optional model override.
-- `pm_co_pilot_vision/utils/vision_functions.py` — VisionHandler that orchestrates the vision pipeline and file outputs.
-- `config/prompts.yaml` — models and prompt configuration; the GUI reads available models from here.
-- `files/vision_functions.json` — vision tool/function specs used by the agent.
-- `launch/pm_co_pilot_vision.launch.py` — example launch file.
+- `pm_co_pilot_vision/pm_co_pilot_vision.py` — main entry point with mode selection (GUI or node)
+- `pm_co_pilot_vision/gui/agent_gui.py` — PyQt6 GUI with image browser and live preview
+- `pm_co_pilot_vision/co_pilot_modules/agent.py` — Agent wrapper with `FunctionsView` enum and model override
+- `pm_co_pilot_vision/utils/vision_functions.py` — VisionHandler for pipeline orchestration and file outputs
+- `config/prompts.yaml` — models and prompt configuration
+- `config/node_config.yaml` — settings for node mode (image path, prompt, etc.)
+- `config/gui_config.yaml` — persistent GUI settings (last used directory)
+- `files/vision_functions.json` — vision tool/function specifications
+- `launch/pm_co_pilot_vision.launch.py` — launch file with mode argument
 
 ## Requirements
 
@@ -53,52 +58,95 @@ source install/setup.bash
 
 ## Run
 
-You can run the GUI via the package executable or with a launch file (if wired in your environment):
+The package supports two modes: **GUI mode** (default) for interactive use and **Node mode** for automated execution.
+
+### GUI Mode (Interactive)
+
+Launch the GUI for manual image selection, prompt entry, and live preview:
 
 ```bash
-# direct executable (installed via entry_points)
-ros2 run pm_co_pilot_vision pm_co_pilot_vision_gui
-
-# or, if you prefer using the launch file (example)
+# Using ros2 launch (recommended)
 ros2 launch pm_co_pilot_vision pm_co_pilot_vision.launch.py
+
+# or explicitly specify GUI mode
+ros2 launch pm_co_pilot_vision pm_co_pilot_vision.launch.py mode:=gui
+
+# Using ros2 run directly
+ros2 run pm_co_pilot_vision pm_co_pilot_vision
 ```
 
-### Environment variables (image & processes paths)
+### Node Mode (Headless/Automated)
 
-At runtime the GUI expects only the image file name (e.g., `sensor_corner.png`). It locates paths as follows:
+Run the agent with hardcoded settings from `config/node_config.yaml`:
 
-- `PM_CO_PILOT_IMAGE_PATH` (optional): directory containing your input images.
-- `PM_CO_PILOT_PROCESSES_PATH` (optional): directory where pipeline JSON files will be written.
+```bash
+ros2 launch pm_co_pilot_vision pm_co_pilot_vision.launch.py mode:=node
+```
 
-If these variables are not set, the code uses sensible fallbacks that match typical `pm_vision_manager` locations, e.g.:
+This mode loads configuration from `node_config.yaml` including:
+- Image path and name
+- User prompt
+- Processing directory
+
+Perfect for automated workflows, testing, or integration with other ROS nodes.
+
+### Environment Variables (GUI Mode)
+
+When using GUI mode, you can optionally set these environment variables to customize default paths:
+
+- `PM_CO_PILOT_IMAGE_PATH`: directory containing your input images
+- `PM_CO_PILOT_PROCESSES_PATH`: directory where pipeline JSON files will be written
+
+If not set, the GUI uses fallback defaults that match typical `pm_vision_manager` locations:
 
 - Images default: `/home/<user>/Documents/ros2_ws/src/pm_vision_manager/pm_vision_manager/vision_db/co_pilot_tests/`
 - Processes default: `/home/<user>/Documents/ros2_ws/src/pm_vision_manager/pm_vision_manager/vision_processes/co_pilot_tests`
 
-Exporting them before launching is recommended:
+**Note**: When you browse for an image in the GUI, the selected directory is automatically saved to `gui_config.yaml` and used for subsequent operations, overriding these defaults.
+
+Example:
 
 ```bash
 export PM_CO_PILOT_IMAGE_PATH=/path/to/images
 export PM_CO_PILOT_PROCESSES_PATH=/path/to/vision_processes
+ros2 launch pm_co_pilot_vision pm_co_pilot_vision.launch.py
 ```
 
 ## Using the GUI
 
-1. Start the app: `ros2 run pm_co_pilot_vision pm_co_pilot_vision_gui`.
-2. Fill the fields on the left:
-	 - FunctionsView: Names only or Full specs
-	 - Model: comes from `config/prompts.yaml` (see below)
-	 - Image name: just the filename (e.g., `sensor_corner.png`) located in `PM_CO_PILOT_IMAGE_PATH`
-	 - User prompt: free text prompt for the agent
-3. Click “Run Agent”.
-4. Right pane shows two images:
-	 - Original (top)
-	 - Overlay (bottom): this updates live as the pipeline saves the overlay file.
+1. **Start the app**: 
+   ```bash
+   ros2 launch pm_co_pilot_vision pm_co_pilot_vision.launch.py
+   ```
 
-Outputs:
-- Final processed image is saved as `<image>_processed.png` under an auto-created result directory.
-- Live overlay is saved as `<image>_overlay.png` in the same directory; the GUI watches it and refreshes automatically.
-- A results JSON (`vision_results.json`) is also written with serializable content extracted from the pipeline/agent.
+2. **Select an image**:
+   - **Option A (Browse)**: Click the "Browse..." button next to Image name field
+     - A file dialog opens to your last used directory (or default)
+     - Select an image file (PNG, JPG, JPEG, BMP, TIFF)
+     - Image name is auto-filled and the image appears in the "Original" preview
+     - Directory is saved to `gui_config.yaml` for next time
+   - **Option B (Manual)**: Type the filename directly (e.g., `sensor_corner.png`)
+     - Image must exist in `PM_CO_PILOT_IMAGE_PATH` or last browsed directory
+
+3. **Configure agent settings**:
+   - **FunctionsView**: Choose "Names only" or "Full specs"
+   - **Model**: Select from dropdown (populated from `prompts.yaml`)
+   - **User prompt**: Enter free text instruction for the agent
+
+4. **Run**: Click "Run Agent"
+
+5. **View results**:
+   - **Left panel**: Agent response appears in the text area
+   - **Right panel** (Preview):
+     - **Original** (top): Selected input image
+     - **Overlay** (bottom): Live-updating overlay with annotations
+       - Updates automatically as the pipeline processes
+
+**Outputs**:
+- Final processed image: `<image>_processed.png`
+- Live overlay image: `<image>_overlay.png` (shown in GUI)
+- Results JSON: `vision_results.json` with pipeline metadata
+- All saved to auto-created result directory
 
 ## Configuration files
 
@@ -125,34 +173,81 @@ Function/tool specifications for the agent. Resolved in this order:
 1. Package share directory: `$AMENT_PREFIX/share/pm_co_pilot_vision/vision_functions.json`
 2. Fallback to local repo: `files/vision_functions.json`
 
-## Architecture (quick tour)
+## Architecture
 
-- `Agent` (`co_pilot_modules/agent.py`): wraps the LLM, accepts `functions_view: FunctionsView` and optional `model` override.
-- `VisionHandler` (`utils/vision_functions.py`): interfaces with `pm_vision_manager` to run the pipeline, writes output files, builds serializable results.
-- GUI (`gui/agent_gui.py`):
-	- Runs the agent work on a `QThread` with a `QObject` worker to keep the UI responsive.
-	- Emits a path hint for the overlay early so the GUI can start watching and updating live.
-	- Scales images to fit the viewport; borders hug the image contents (no excess frames). Scrollbars are disabled.
+- **Main Entry** (`pm_co_pilot_vision.py`):
+  - Parses `--mode` argument (gui or node)
+  - GUI mode: launches PyQt6 interface with ROS node in background thread
+  - Node mode: executes agent with settings from `node_config.yaml`
+  
+- **Agent** (`co_pilot_modules/agent.py`):
+  - Wraps the LLM with `functions_view: FunctionsView` and optional `model` override
+  - Supports both compact (names only) and detailed (full specs) function exposure
+  
+- **VisionHandler** (`utils/vision_functions.py`):
+  - Interfaces with `pm_vision_manager` to run the vision pipeline
+  - Writes output files (processed, overlay, results JSON)
+  - Builds serializable results for the agent
+  
 
 ## Troubleshooting
 
-- PyQt6 isn’t found
-	- Install it in your runtime Python: `pip install --user PyQt6` and ensure you run the GUI in that environment.
+### Installation & Dependencies
 
-- Image not found dialog
-	- Set `PM_CO_PILOT_IMAGE_PATH` or place the image file under the default path shown in the dialog.
+- **PyQt6 isn't found**
+  - Install it in your runtime Python: `pip install --user PyQt6` and ensure you run the GUI in that environment
 
-- NameError: `QObject` is not defined
-	- Ensure the GUI imports include `from PyQt6.QtCore import Qt, QObject, pyqtSignal, QThread`.
+- **NameError: `QObject` is not defined**
+  - Ensure the GUI imports include `from PyQt6.QtCore import Qt, QObject, pyqtSignal, QThread`
 
-- KeyError: `agent` in `prompts.yaml`
-	- The loader now aliases `'agent'` to `'agent_all_functions'`. Make sure your `prompts.yaml` structure matches the examples or use the updated keys.
+- **pm_vision_manager not found**
+  - Clone and build `pm_vision_manager` in your ROS 2 workspace
+  - Source the workspace: `source ~/ros2_ws/install/setup.bash`
 
-- GUI freezes while running
-	- The agent runs in a worker `QThread`. If you changed that code and see freezes, verify the long-running calls are off the main thread.
+### Configuration Issues
 
-- Scrollbars on the image panel
-	- The GUI scales images to the viewport and hides scrollbars. If the window is too small, enlarge it or resize the panes.
+- **KeyError: `agent` in `prompts.yaml`**
+  - The loader aliases `'agent'` to `'agent_all_functions'`
+  - Ensure your `prompts.yaml` has the correct structure (see Configuration files section)
+
+- **Config file not found (node_config.yaml)**
+  - Verify the file exists in `config/node_config.yaml`
+  - Check that the package was built and installed correctly
+  - The file should be in the share directory: `$ROS_INSTALL_PATH/share/pm_co_pilot_vision/config/`
+
+### GUI Issues
+
+- **Image not found dialog**
+  - **Option 1**: Use the Browse button to select the image directly
+  - **Option 2**: Set `PM_CO_PILOT_IMAGE_PATH` environment variable
+  - **Option 3**: Place the image file under the default path shown in the dialog
+
+- **Browse button doesn't save directory**
+  - Check write permissions for `config/gui_config.yaml`
+  - Verify the config directory exists and is writable
+
+- **GUI freezes while running**
+  - The agent runs in a worker `QThread` - if you modified that code, verify long-running calls are off the main thread
+
+- **Scrollbars on the image panel**
+  - The GUI scales images to the viewport and hides scrollbars
+  - If the window is too small, enlarge it or resize the panes using the splitter
+
+- **Overlay image not updating**
+  - Check that the vision pipeline is saving `<image>_overlay.png`
+  - Verify write permissions in the image_processes_path directory
+  - The GUI polls every 750ms - ensure the file is being created
+
+### Node Mode Issues
+
+- **Node mode doesn't run**
+  - Verify `config/node_config.yaml` exists and has correct structure
+  - Check all paths in the config file are valid and accessible
+  - Ensure the image file exists at the specified path
+
+- **Launch argument not recognized**
+  - Make sure you're using the correct syntax: `mode:=node` (not `--mode node`)
+  - Verify the launch file was installed: `ros2 launch pm_co_pilot_vision pm_co_pilot_vision.launch.py --show-args`
 
 ## Development
 
