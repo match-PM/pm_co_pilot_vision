@@ -1,18 +1,8 @@
 # pm_co_pilot_vision
 
-ROS 2 package that provides a Co‑Pilot Vision agent with two operating modes: an interactive PyQt6 GUI and a headless node mode for automated execution. It runs configurable vision pipelines on images, visualizes live overlays, and interacts with the agent via LLM-backed tools.
+This package provides a vision co-pilot agent for ROS 2, enabling users to build opencv based image processing pipelines to detect 2D-features. 
+It supports both a graphical user interface (GUI) for manual image selection and prompt entry.
 
-The package is designed to work both from an installed ROS share (installed with colcon) and directly from source during development. Key assets such as `prompts.yaml`, `node_config.yaml`, `gui_config.yaml`, and `vision_functions.json` are resolved from the package install path with a safe fallback to the local repository.
-
-## Highlights
-
-- **Dual Modes**:
-  - **GUI Mode** (default): Interactive PyQt6 interface with image browsing, live overlay preview, and manual prompt entry
-  - **Node Mode**: Headless execution with settings from `node_config.yaml` for automated workflows
-- **Image Browsing**: Browse and select images directly from the GUI with persistent directory memory
-- **Live Overlay Preview**: Pipeline writes overlay images during processing; GUI watches and refreshes automatically
-- **Configuration-Driven**: All settings (paths, prompts, models) configurable via YAML files
-- **ROS 2 Integration**: Full ROS2 node lifecycle support with launch file arguments
 
 ## Repository layout
 
@@ -42,7 +32,6 @@ Install Python user deps (PyQt6) into the environment you use to run ROS:
 pip install --user PyQt6
 ```
 
-If you’re using a venv, activate it first; if you’re using the ROS Python, consider creating a venv to avoid mixing system packages.
 
 ## Build
 
