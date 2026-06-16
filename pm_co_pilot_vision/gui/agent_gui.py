@@ -46,6 +46,8 @@ def load_available_models() -> List[str]:
     import os
     from pathlib import Path
 
+    prompt_path = None
+
     # Try share dir first
     try:
         from ament_index_python.packages import get_package_share_directory
@@ -94,6 +96,7 @@ class AgentWorker(QObject):
                 image_name=self._image_name,
                 image_path=self._image_path,
                 image_processes_path=self._image_proc_dir,
+                model_label=self._model,
             )
             # tell GUI where the overlay image will be saved so it can watch it
             overlay_name = self._image_name.replace('.png', '_overlay.png')
@@ -326,15 +329,9 @@ class AgentWindow(QMainWindow):
 
     def _load_last_image_directory(self) -> str:
         """Load last used image directory from gui_config.yaml."""
-        try:
-            from ament_index_python.packages import get_package_share_directory
-            share_dir = get_package_share_directory('pm_co_pilot_vision')
-            config_path = Path(share_dir) / 'config' / 'gui_config.yaml'
-        except Exception:
-            # Fallback to repo path
-            config_path = Path(__file__).resolve().parents[2] / 'config' / 'gui_config.yaml'
+        config_path = self._co_pilot_config_path('gui_config.yaml')
         
-        if config_path.exists():
+        if config_path and config_path.exists():
             try:
                 with open(config_path, 'r') as f:
                     config = yaml.safe_load(f) or {}
@@ -345,12 +342,8 @@ class AgentWindow(QMainWindow):
 
     def _save_last_image_directory(self, directory: str):
         """Save last used image directory to gui_config.yaml."""
-        try:
-            from ament_index_python.packages import get_package_share_directory
-            share_dir = get_package_share_directory('pm_co_pilot_vision')
-            config_path = Path(share_dir) / 'config' / 'gui_config.yaml'
-        except Exception:
-            # Fallback to repo path
+        config_path = self._co_pilot_config_path('gui_config.yaml')
+        if config_path is None:
             config_path = Path(__file__).resolve().parents[2] / 'config' / 'gui_config.yaml'
         
         try:
@@ -534,22 +527,94 @@ class AgentWindow(QMainWindow):
         if hasattr(self, '_overlay_pixmap') and isinstance(self._overlay_pixmap, QPixmap) and not self._overlay_pixmap.isNull():
             self._update_label_scaled(self.overlay_image_label, self.overlay_scroll, self._overlay_pixmap)
 
+    def _show_error(self, title: str, message: str):
+        self.statusBar().showMessage(message)
+        QMessageBox.critical(self, title, message)
+
+    def _co_pilot_config_path(self, filename: str) -> Optional[Path]:
+        candidates = []
+        try:
+            from ament_index_python.packages import get_package_share_directory
+            share_dir = Path(get_package_share_directory('pm_co_pilot_vision'))
+            candidates.extend([
+                share_dir / 'config' / filename,
+                share_dir / filename,
+            ])
+        except Exception:
+            pass
+
+        candidates.append(Path(__file__).resolve().parents[2] / 'config' / filename)
+
+        for candidate in candidates:
+            if candidate.exists():
+                return candidate
+        return None
+
+    def _node_config_value(self, key: str) -> Optional[str]:
+        config_path = self._co_pilot_config_path('node_config.yaml')
+        if not config_path:
+            return None
+
+        try:
+            with open(config_path, 'r') as f:
+                config = yaml.safe_load(f) or {}
+            value = config.get('node_mode', {}).get(key)
+            return str(value) if value else None
+        except Exception as e:
+            self.node.get_logger().warning(f"Failed to load node config: {e}")
+            return None
+
+    def _vision_manager_path_config_value(self, key: str) -> Optional[str]:
+        try:
+            from ament_index_python.packages import get_package_share_directory
+            share_dir = Path(get_package_share_directory('pm_vision_manager'))
+            config_path = share_dir / 'vision_assistant_path_config.yaml'
+            with open(config_path, 'r') as f:
+                config = yaml.safe_load(f) or {}
+            value = config.get('vision_assistant_path_config', {}).get(key)
+            return str(value) if value else None
+        except Exception as e:
+            self.node.get_logger().warning(f"Failed to load pm_vision_manager path config: {e}")
+            return None
+
     def _default_image_path(self) -> str:
         # Try environment variable first
         env_path = os.environ.get("PM_CO_PILOT_IMAGE_PATH")
         if env_path and Path(env_path).is_dir():
             return str(Path(env_path))
-        # Fallback to typical project path used in your node example
-        fallback = "/home/match-mover/Documents/ros2_ws/src/pm_vision_manager/pm_vision_manager/vision_db/co_pilot_tests/"
-        return fallback
+
+        configured_path = self._node_config_value('image_path')
+        if configured_path and Path(configured_path).is_dir():
+            return str(Path(configured_path))
+
+        vision_db_path = self._vision_manager_path_config_value('vision_database_path')
+        if vision_db_path:
+            candidate = Path(vision_db_path) / 'co_pilot_tests'
+            if candidate.is_dir():
+                return str(candidate)
+
+        test_image_path = Path(__file__).resolve().parents[2] / 'test' / 'testimage'
+        if test_image_path.is_dir():
+            return str(test_image_path)
+
+        return str(Path.home())
 
     def _default_process_dir(self) -> Optional[str]:
         env_path = os.environ.get("PM_CO_PILOT_PROCESSES_PATH")
         if env_path and Path(env_path).is_dir():
             return str(Path(env_path))
-        # Fallback to typical project path used in your node example
-        fallback = "/home/match-mover/Documents/ros2_ws/src/pm_vision_manager/pm_vision_manager/vision_processes/co_pilot_tests"
-        return fallback
+
+        process_library_path = self._vision_manager_path_config_value('process_library_path')
+        if process_library_path:
+            candidate = Path(process_library_path) / 'co_pilot_tests'
+            if candidate.is_dir():
+                return str(candidate)
+
+        configured_path = self._node_config_value('image_processes_path')
+        if configured_path and Path(configured_path).is_dir():
+            return str(Path(configured_path))
+
+        return None
 
 
 def main():

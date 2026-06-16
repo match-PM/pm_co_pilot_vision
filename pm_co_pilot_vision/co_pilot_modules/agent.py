@@ -7,6 +7,7 @@ from langchain.agents import AgentExecutor, create_openai_tools_agent
 from langchain_core.messages import HumanMessage, AIMessage, FunctionMessage
 from langgraph.prebuilt import create_react_agent
 from langgraph.checkpoint.memory import MemorySaver
+from langchain.chat_models import init_chat_model
 from langchain_openai import ChatOpenAI
 from langchain.tools import BaseTool
 from langchain_community.agent_toolkits.json.toolkit import JsonToolkit
@@ -67,6 +68,10 @@ class Agent:
 
         if model is not None:
             self.model = model
+        self.model_provider, self.model = self._resolve_model_provider(self.model, self.model_provider)
+        self.node.get_logger().info(
+            f"Using chat model '{self.model}' with provider '{self.model_provider}'."
+        )
 
         self.memory = MemorySaver()
         self.config = {"configurable": {"thread_id": "1"}}    
@@ -105,7 +110,8 @@ class Agent:
                 self.vision_tools.get_function_parameters_tool
             ]
         except Exception as e:
-            self.node.get_logger().error(f"Error initializing tools: {e}")        
+            self.node.get_logger().error(f"Error initializing tools: {e}")
+            raise RuntimeError(f"Failed to initialize agent tools: {e}") from e
 
 
     def handle_user_input(self, user_message: str, image_name: str = None) -> str:
@@ -149,11 +155,40 @@ class Agent:
         return response
     
     def create_executor(self):
+        chat_model_kwargs = {
+            "model": self.model,
+            "model_provider": self.model_provider,
+        }
+        chat_model_kwargs["temperature"] = (
+            1.0 if self._uses_default_temperature_only() else self.temperature
+        )
+
+        chat_model = init_chat_model(
+            **chat_model_kwargs
+        )
         return create_react_agent(
-            self.model,
+            chat_model,
             self.tools,
             checkpointer=self.memory,
             prompt=self.prompt
+        )
+
+    @staticmethod
+    def _resolve_model_provider(model: str, default_provider: Optional[str]) -> tuple[str, str]:
+        if ":" in model:
+            provider, model_name = model.split(":", 1)
+            if provider and model_name:
+                return provider, model_name
+
+        if default_provider:
+            return default_provider, model
+
+        raise ValueError(f"Model provider is required for model '{model}'.")
+
+    def _uses_default_temperature_only(self) -> bool:
+        return (
+            self.model_provider == "openai"
+            and self.model.startswith("gpt-5")
         )
     
     def save_token_usage_summary(self, response: Dict[str, Any], save_path: str):

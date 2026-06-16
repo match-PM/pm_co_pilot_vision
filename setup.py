@@ -17,6 +17,10 @@ setup(
         ('share/' + package_name, ['files/vision_functions.json']),
         ('share/' + package_name, ['files/example_pipeline.json']),
         ('share/' + package_name, ['config/prompts.yaml']),
+        ('share/' + package_name + '/config', [
+            'config/gui_config.yaml',
+            'config/node_config.yaml',
+        ]),
         ('share/' + package_name + '/launch', ['launch/pm_co_pilot_vision.launch.py']),
     ],
     install_requires=['setuptools'],

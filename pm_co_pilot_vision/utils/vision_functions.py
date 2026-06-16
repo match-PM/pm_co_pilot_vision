@@ -6,6 +6,7 @@ from sensor_msgs.msg import Image
 import time # For potential delays or checks
 import sys
 import os
+import shutil
 import cv2
 import json
 import base64, mimetypes
@@ -30,13 +31,21 @@ class VisionHandler():
 
     RESIZE_FACTOR = 0.1  # Resize factor for testing
 
-    def __init__(self, vision_node: Node, image_name: str, image_path: str, image_processes_path: str):
+    def __init__(
+        self,
+        vision_node: Node,
+        image_name: str,
+        image_path: str,
+        image_processes_path: str,
+        model_label: Optional[str] = None,
+    ):
         self.vision_node = vision_node
 
         llm_config = LLMConfig("agent")
 
         self.image_name = image_name
-        self.pipeline_name = image_name.replace('.png', '') + "_" + llm_config.model.replace(':', '_') + "_" + datetime.now().strftime("%Y%m%d_%H_%M_%S")
+        model_name = model_label or llm_config.model
+        self.pipeline_name = image_name.replace('.png', '') + "_" + model_name.replace(':', '_') + "_" + datetime.now().strftime("%Y%m%d_%H_%M_%S")
         self.image_path = image_path
         self.image_result_path = image_path + "/" + self.pipeline_name + "/"
         self.image_processes_path = image_processes_path + "/" + self.pipeline_name + "/"
@@ -104,8 +113,32 @@ class VisionHandler():
 
 
         self.vision_processor.load_camera_config()
+        self._sync_source_image_to_manager_db()
         self.magnification = self.vision_processor.image_processing_handler.magnification
         self.pixel_size_microns = self.vision_processor.image_processing_handler.pixelsize
+
+    def _sync_source_image_to_manager_db(self):
+        source_image = Path(self.image_path, self.image_name).expanduser().resolve()
+        if not source_image.exists():
+            self.vision_node.get_logger().error(f"Source image does not exist: {source_image}")
+            return
+
+        manager_db_path = Path(self.vision_processor.process_db_path).expanduser().resolve()
+        manager_db_path.mkdir(parents=True, exist_ok=True)
+        destination_image = manager_db_path / self.image_name
+
+        if source_image == destination_image:
+            return
+
+        try:
+            shutil.copy2(source_image, destination_image)
+            self.vision_node.get_logger().info(
+                f"Copied source image to pm_vision_manager DB: {destination_image}"
+            )
+        except Exception as e:
+            self.vision_node.get_logger().error(
+                f"Failed to copy source image to pm_vision_manager DB: {e}"
+            )
 
     def path_to_data_url(self, path: str, image_name: str, greyscale: bool, resize: bool) -> str:
         """
@@ -206,15 +239,17 @@ class VisionHandler():
                 self.vision_processor.image_processing_handler.visionOK = False
                 error_msg = "Failed to set camera parameters."
                 self.vision_node.get_logger().error(error_msg)
-                return None, error_msg
+                return None, error_msg, None
 
 
             self.vision_processor.image_processing_handler.set_image_metatdata(self.vision_processor.process_db_path,self.image_name)
             self.vision_processor.image_processing_handler.set_initial_image(image)
 
-            display_image, vision_results = process_image(self.vision_processor.vision_node, self.vision_processor.image_processing_handler, self.vision_processor.process_pipeline_list)
+            display_image = process_image(self.vision_processor.vision_node, self.vision_processor.image_processing_handler, self.vision_processor.process_pipeline_list)
             image_overlay = self.vision_processor.image_processing_handler.get_processed_image_overlay()
-            final_image = self.vision_processor.image_processing_handler.get_final_image()
+            final_image = self.vision_processor.image_processing_handler.get_display_image()
+            if final_image is None:
+                final_image = display_image
             # final_image = self.vision_processor.image_processing_handler.get_initial_image_overlay()
 
             # result_dict = vision_processor.save_vision_results()
@@ -227,8 +262,9 @@ class VisionHandler():
 
             self.vision_processor.image_processing_handler.clear_vision_process_debug()
             
-            quality_score = self.vision_processor.image_processing_handler.get_quality_scores()
-            self.vision_processor.image_processing_handler.delete_quality_scores()
+            quality_score = dict(self.vision_processor.image_processing_handler.get_quality_scores())
+            if hasattr(self.vision_processor.image_processing_handler, "_quality_scores_dict"):
+                self.vision_processor.image_processing_handler._quality_scores_dict.clear()
 
             # result_dict contains the vision_result_dict and process_debug
             result_dict = {
@@ -275,11 +311,12 @@ class VisionHandler():
                 {"type": "text", "text": f"Pipeline results: {result_dict}"}
             ]
 
-            return content_blocks
+            processed_image_path = str(Path(self.image_result_path, image_name_processed).expanduser().resolve())
+            return result_dict, "Vision pipeline executed.", processed_image_path
         
         except Exception as e:
             self.vision_node.get_logger().error(f"Error processing image: {e}")
-            return None, str(e)
+            return None, str(e), None
         
 
 

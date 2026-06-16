@@ -3,14 +3,13 @@
 
 node_mode:
   # Path to the directory containing input images
-  image_path: "/home/match-mover/Documents/ros2_ws/src/pm_vision_manager/pm_vision_manager/vision_db/co_pilot_tests/"
+  image_path: "/home/match-pm/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_image_db/co_pilot_tests/"
   
   # Path to the directory where vision processing results will be saved
-  image_processes_path: "/home/match-mover/Documents/ros2_ws/src/pm_vision_manager/pm_vision_manager/vision_processes/co_pilot_tests"
+  image_processes_path: "/home/match-pm/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_processes/co_pilot_tests"
   
   # Name of the image file to process
   image_name: "sensor_corner.png"
   
   # User prompt/instruction for the vision agent
   user_prompt: "Detect the corner of the sensor in the image."
-

@@ -1,0 +1,23 @@
+{
+    "vision_process_name": "corner_detection_bottom_right",
+    "process creation": "2026-05-12 11:48:54",
+    "vision_pipeline": [
+        {
+            "BGR2GRAY": {
+                "active": true
+            }
+        },
+        {
+            "CornerDetectionSubPixel": {
+                "active": true,
+                "line_1_selection": "bottom",
+                "minLineLength_1": 0.1,
+                "line_2_selection": "right",
+                "minLineLength_2": 0.1,
+                "search_accuracy": "fine",
+                "dist_thresh": 1.5,
+                "min_inliers": 10
+            }
+        }
+    ]
+}

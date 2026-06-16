@@ -1,0 +1,13 @@
+{
+    "vision_process_name": "sensor_corner_openai_gpt-5.5_20260512_11_56_55.json",
+    "id_process": "default_ID",
+    "File_created": "12_05_2026_12_48_26",
+    "vision_pipeline": [
+        {
+            "VisionOkOverride": {
+                "active": true,
+                "override_vision_ok": false
+            }
+        }
+    ]
+}

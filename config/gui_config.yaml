@@ -1,6 +1,2 @@
-# Configuration for GUI mode
-# This file stores persistent GUI settings like last used directories
-
 gui_settings:
-  # Last directory from which an image was selected
-  last_image_directory: ""
+  last_image_directory: /home/match-pm/pm_Server/01_PM_Zelle/03_PM_DataBase/pm_assembly_database/Vision/vision_image_db/co_pilot_tests

@@ -1,7 +1,7 @@
 [
   {
     "function_name": "CircleDetection",
-    "description": "A high-precision circle detector that identifies circles in a **binary image**. It operates by finding object contours and then applying a least-squares fitting algorithm to the contour points. This function is ideal for accurately measuring the center and radius of circular objects in the image. **Important**: Set the `minRadius` to 100.0 \u00b5m and `maxRadius` to 10000.0 \u00b5m at first to ensure detection of all circles. Then adjust the range to only detect the desired circles.\n**WARNING:** This method is sensitive and will likely fail if the circles are truncated by the image border. The fitting algorithm will be corrupted by the non-circular points from the image edge. To handle such cases, a `morphological_opening` or `morphological_closing` function **must** be applied to the binary image *before* calling this function to detach the shape from the edges.",
+    "description": "A high-precision circle detector that identifies circles in a **binary image**. It operates by finding object contours and then applying a least-squares fitting algorithm to the contour points. This function is ideal for accurately measuring the center and radius of circular objects in the image. Set the `minRadius` and `maxRadius` span larger at first to ensure detection, then narrow down the range for more precise results.\n\n**WARNING:** This method is sensitive and will likely fail if the circles are truncated by the image border. The fitting algorithm will be corrupted by the non-circular points from the image edge. To handle such cases, a `morphological_opening` or `morphological_closing` function **must** be applied to the binary image *before* calling this function to detach the shape from the edges.",
     "function_category": "Machine Vision",
     "params": [
       {
@@ -11,7 +11,7 @@
         "type": "bool"
       },
       {
-        "param_name": "mode",
+        "param_name": "circle_fit_mode",
         "description": "Select the method to be used for the fitting algorithm.",
         "type": "string_list",
         "values": [
@@ -35,7 +35,7 @@
         "param_name": "maxRadius",
         "description": "Maximum radius of the circle to be detected [um].",
         "type": "float",
-        "min_val": 100.0,
+        "min_val": 0.001,
         "max_val": 10000.0
       },
       {
@@ -43,6 +43,24 @@
         "description": "Draw the detected circles on the image. This has no effect on the output of the function.",
         "type": "bool",
         "default_val": true
+      },
+      {
+        "param_name": "fit_single_circle",
+        "description": "Use all the points of the current image to fit a circle. This is useful when only one circle is expected in the image.",
+        "type": "bool",
+        "default_val": false
+      },
+      {
+        "param_name": "mode",
+        "description": "Contour retrieval mode. Defines how contours and their hierarchy are extracted (e.g., only outer contours, all contours, or hierarchical structure).",
+        "type": "string_list",
+        "values": [
+          "RETR_EXTERNAL",
+          "RETR_LIST",
+          "RETR_CCOMP",
+          "RETR_TREE"
+        ],
+        "default_val": "RETR_EXTERNAL"
       }
     ]
   },

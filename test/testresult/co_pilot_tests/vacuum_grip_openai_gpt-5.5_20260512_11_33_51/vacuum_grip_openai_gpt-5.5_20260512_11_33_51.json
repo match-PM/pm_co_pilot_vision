@@ -1,0 +1,31 @@
+{
+    "vision_process_name": "vacuum_grip_openai_gpt-5.5_20260512_11_33_51",
+    "process creation": "2026-05-12 12:15:08",
+    "vision_pipeline": [
+        {
+            "BGR2GRAY": {
+                "active": false
+            }
+        },
+        {
+            "Threshold": {
+                "active": true,
+                "thresh": 31,
+                "maxval": 255,
+                "type": "THRESH_BINARY"
+            }
+        },
+        {
+            "CornerDetectionSubPixel": {
+                "active": true,
+                "line_1_selection": "top",
+                "line_2_selection": "left",
+                "search_accuracy": "fine",
+                "minLineLength_1": 1000.0,
+                "minLineLength_2": 1000.0,
+                "dist_thresh": 1.5,
+                "min_inliers": 10
+            }
+        }
+    ]
+}
