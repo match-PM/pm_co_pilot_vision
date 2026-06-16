@@ -2,7 +2,7 @@
 import json
 from typing import ClassVar
 from pydantic import PrivateAttr
-from langchain.tools import BaseTool
+from langchain_core.tools import BaseTool
 from ament_index_python.packages import get_package_share_directory
 from rclpy.node import Node
 from pm_co_pilot_vision.co_pilot_modules.llm_config import LLMConfig
@@ -53,6 +53,5 @@ class ImageDescriberTool(BaseTool):
         self._node.get_logger().info(f"ImageDescriberTool response: {response}")
 
         return response.content
-
 
 

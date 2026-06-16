@@ -1,4 +1,4 @@
-from langchain.tools import Tool
+from langchain_core.tools import Tool
 from rclpy.node import Node
 from pydantic import BaseModel, Field 
 from typing import List, Dict, Any
