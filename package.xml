@@ -19,6 +19,8 @@
   <exec_depend>openai</exec_depend>
   <exec_depend>langchain-openai</exec_depend>
   <exec_depend>langchain-community</exec_depend>
+  <exec_depend>langchain-huggingface</exec_depend>
+  <exec_depend>huggingface_hub</exec_depend>
 
 
   <export>

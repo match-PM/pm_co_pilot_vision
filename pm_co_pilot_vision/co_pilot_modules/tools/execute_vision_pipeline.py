@@ -172,10 +172,84 @@ class VisionPipelineTool(BaseTool):
 
         normalized_params = dict(params)
         normalized_params = self._normalize_common_param_aliases(function_name, normalized_params)
+        normalized_params = self._coerce_param_types(function_name, normalized_params)
         if function_name == "CircleDetection":
             normalized_params = self._normalize_circle_detection_params(normalized_params)
 
         return {function_name: normalized_params}
+
+    def _coerce_param_types(
+        self,
+        function_name: str,
+        params: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        param_types = self._function_param_types(function_name)
+        return {
+            key: self._coerce_param_value(value, param_types.get(key))
+            for key, value in params.items()
+        }
+
+    def _function_param_types(self, function_name: str) -> Dict[str, str]:
+        for function_spec in self._vision_handler.vision_functions:
+            if function_spec.get("function_name") == function_name:
+                return {
+                    param.get("param_name"): param.get("type")
+                    for param in function_spec.get("params", [])
+                    if param.get("param_name")
+                }
+        return {}
+
+    def _coerce_param_value(self, value: Any, param_type: Optional[str]) -> Any:
+        if isinstance(value, str):
+            value = value.strip()
+
+        if param_type == "bool":
+            return self._coerce_bool(value)
+        if param_type in {"unsigned_int", "int", "kernel"}:
+            return self._coerce_int(value)
+        if param_type == "float":
+            return self._coerce_float(value)
+        if param_type == "string_list":
+            return str(value)
+
+        return self._coerce_scalar(value)
+
+    def _coerce_scalar(self, value: Any) -> Any:
+        if not isinstance(value, str):
+            return value
+
+        lowered = value.lower()
+        if lowered in {"true", "false"}:
+            return lowered == "true"
+
+        try:
+            return int(value)
+        except ValueError:
+            pass
+
+        try:
+            return float(value)
+        except ValueError:
+            return value
+
+    def _coerce_bool(self, value: Any) -> bool:
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            lowered = value.lower()
+            if lowered in {"true", "1", "yes", "on"}:
+                return True
+            if lowered in {"false", "0", "no", "off"}:
+                return False
+        return bool(value)
+
+    def _coerce_int(self, value: Any) -> int:
+        if isinstance(value, bool):
+            return int(value)
+        return int(float(value))
+
+    def _coerce_float(self, value: Any) -> float:
+        return float(value)
 
     def _normalize_common_param_aliases(
         self,

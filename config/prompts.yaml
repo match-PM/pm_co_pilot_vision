@@ -1,23 +1,50 @@
 available_models:
-- 'openai:gpt-5.5'
-- 'openai:gpt-5.5-pro'
-- 'openai:gpt-5.4'
-- 'openai:gpt-5.4-pro'
-- 'openai:gpt-5.4-mini'
-- 'openai:gpt-5.4-nano'
-- 'openai:gpt-5'
-- 'openai:gpt-5-mini'
-- 'openai:gpt-5-nano'
-- 'gemini-2.0-flash-001'
-- 'gemini-2.5-flash'
-- 'gemini-1.5-flash'
-- 'anthropic:claude-sonnet-4-5-20250929'
-- 'grok-4-fast-reasoning'
+- 'huggingface:auto:Qwen/Qwen3.6-35B-A3B'
+- 'huggingface:cohere:CohereLabs/aya-vision-32b'
+- 'huggingface:novita:zai-org/GLM-4.5V'
+- 'huggingface:zai-org:zai-org/GLM-4.5V'
+- 'huggingface:zai-org:zai-org/GLM-OCR'
+- 'huggingface:novita:MiniMaxAI/MiniMax-M3'
+- 'huggingface:featherless-ai:stepfun-ai/Step-3.7-Flash'
+- 'huggingface:featherless-ai:ByteDance-Seed/UI-TARS-1.5-7B'
+- 'huggingface:novita:Qwen/Qwen3-VL-235B-A22B-Instruct'
+- 'huggingface:novita:Qwen/Qwen3-VL-235B-A22B-Thinking'
+- 'huggingface:featherless-ai:Qwen/Qwen3-VL-235B-A22B-Thinking'
+- 'huggingface:featherless-ai:Qwen/Qwen2.5-VL-72B-Instruct'
+- 'huggingface:ovhcloud:Qwen/Qwen2.5-VL-72B-Instruct'
+- 'huggingface:featherless-ai:Qwen/Qwen3-VL-8B-Instruct'
+- 'huggingface:novita:Qwen/Qwen3-VL-30B-A3B-Instruct'
+- 'huggingface:featherless-ai:Qwen/Qwen3-VL-30B-A3B-Instruct'
+- 'huggingface:featherless-ai:Qwen/Qwen3-VL-32B-Instruct'
+- 'huggingface:deepinfra:Qwen/Qwen3.6-35B-A3B'
+- 'huggingface:deepinfra:Qwen/Qwen3.6-27B'
+- 'huggingface:together:Qwen/Qwen3.5-9B'
+- 'huggingface:featherless-ai:Qwen/Qwen3.5-4B'
+- 'huggingface:deepinfra:Qwen/Qwen3.5-27B'
+- 'huggingface:novita:Qwen/Qwen3.5-35B-A3B'
+- 'huggingface:novita:Qwen/Qwen3.5-122B-A10B'
+- 'huggingface:auto:google/gemma-4-31B-it'
+- 'huggingface:together:moonshotai/Kimi-K2.6'
+- 'huggingface:novita:moonshotai/Kimi-K2.7-Code'
+- 'huggingface:novita:moonshotai/Kimi-K2.5'
+- 'huggingface:deepinfra:moonshotai/Kimi-K2.5'
+- 'huggingface:novita:meta-llama/Llama-4-Scout-17B-16E-Instruct'
+- 'huggingface:deepinfra:meta-llama/Llama-4-Scout-17B-16E-Instruct'
+- 'huggingface:groq:meta-llama/Llama-4-Scout-17B-16E-Instruct'
+- 'huggingface:nscale:meta-llama/Llama-4-Scout-17B-16E-Instruct'
+- 'huggingface:featherless-ai:microsoft/Phi-4-mini-instruct'
+- 'huggingface:featherless-ai:microsoft/Phi-4-mini-reasoning'
+- 'huggingface:featherless-ai:microsoft/phi-4'
+- 'huggingface:deepinfra:microsoft/phi-4'
+
 
 agent_get_functions: 
-  model: 'openai:gpt-5'
-  model_provider: 'openai'
+  model: 'huggingface:auto:Qwen/Qwen3.6-35B-A3B'
+  model_provider: 'huggingface'
   temperature: 1.0
+  huggingface_provider: 'auto'
+  max_new_tokens: 8164
+  supports_image_input: true
   system_prompt: |
     # Role Definition
     role: You are an expert vision-pipeline builder. 
@@ -47,7 +74,7 @@ agent_get_functions:
     1. You get a list of available vision functions.
     2. Select appropriate vision functions to fulfill the user request.
     3. Important: Use only vision functions that exist in the list! Do not invent new functions!
-    4. Use `get_function_parameters_tool` to retrieve the description and parameters for each selected function. **Mandatory**: You must analyze the function's `description` carefully! Follow the instructions on how to use it correctly.
+    4. Call the tool `get_function_parameters` to retrieve the description and parameters for each selected function. **Mandatory**: You must analyze the function's `description` carefully! Follow the instructions on how to use it correctly.
     5. Build a JSON pipeline:
         - Use function names and parameter names exactly as provided by the tool.
         - Set values for every parameter (fill all required fields).
@@ -69,7 +96,7 @@ agent_get_functions:
                 }
             }
             {% endraw %}
-    6. Execute with `VisionPipelineTool`.
+    6. Call the tool `create_and_run_vision_pipeline` with the complete pipeline. Do not call vision function names such as `BGR2GRAY`, `Threshold`, or `CircleDetection` as tools; they are pipeline step names only.
     7. Analyse the response:
         - Visually inspect the `processed_image`, noting that the original is at the top and the processed one is at the bottom. The green overlays (e.g., circles, lines) represent detected features—these are the primary verification source. Confirm overlays accurately correspond to the requested feature.
         - A high `quality_score` alone is insufficient; mandatory visual confirmation is required.
@@ -105,9 +132,12 @@ agent_get_functions:
     {{available_functions}}
 
 agent_all_functions: 
-  model: 'openai:gpt-5-mini'
-  model_provider: 'openai'
+  model: 'huggingface:auto:Qwen/Qwen3.6-35B-A3B'
+  model_provider: 'huggingface'
   temperature: 1.0
+  huggingface_provider: 'auto'
+  max_new_tokens: 16384
+  supports_image_input: true
   system_prompt: |
     # Role Definition
     role: You are an expert vision-pipeline builder. 
@@ -159,7 +189,7 @@ agent_all_functions:
                 }
             }
             {% endraw %}
-    6. Execute with `VisionPipelineTool`.
+    6. Call the tool `create_and_run_vision_pipeline` with the complete pipeline. Do not call vision function names such as `BGR2GRAY`, `Threshold`, or `CircleDetection` as tools; they are pipeline step names only.
     7. Analyse the response:
         - Visually inspect the `processed_image`, noting that the original is at the top and the processed one is at the bottom. The green overlays (e.g., circles, lines) represent detected features—these are the primary verification source. Confirm overlays accurately correspond to the requested feature.
         - A high `quality_score` alone is insufficient; mandatory visual confirmation is required.
@@ -193,12 +223,10 @@ agent_all_functions:
 
     # available functions
     {{available_functions}}
-
-
 image_describer:
   model: 'gemini-2.5-flash'
   model_provider: 'openai'
-  temperature: 1.0
+  temperature: 0.0
   system_prompt: |
     user: detect the outer circle
 

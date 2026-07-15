@@ -36,6 +36,34 @@ class Agent:
     It handles the conversation history and the tools available to the LLM.
     """
 
+    HF_INFERENCE_PROVIDERS = {
+        "auto",
+        "black-forest-labs",
+        "cerebras",
+        "clarifai",
+        "cohere",
+        "deepinfra",
+        "fal-ai",
+        "featherless-ai",
+        "fireworks-ai",
+        "groq",
+        "hf-inference",
+        "hyperbolic",
+        "nebius",
+        "novita",
+        "nscale",
+        "nvidia",
+        "openai",
+        "ovhcloud",
+        "publicai",
+        "replicate",
+        "sambanova",
+        "scaleway",
+        "together",
+        "wavespeed",
+        "zai-org",
+    }
+
     def __init__(
         self,
         node: Node,
@@ -60,13 +88,26 @@ class Agent:
         self.model_provider = llm_config.model_provider
         raw_system_prompt = llm_config.system_prompt
         self.temperature = llm_config.temperature
+        self.model_kwargs = llm_config.model_kwargs
+        self.huggingface_provider = llm_config.huggingface_provider
+        self.huggingface_task = llm_config.huggingface_task
+        self.max_new_tokens = llm_config.max_new_tokens
 
         if model is not None:
             self.model = model
         self.model_provider, self.model = self._resolve_model_provider(self.model, self.model_provider)
+        if self.model_provider == "huggingface":
+            self.huggingface_provider, self.model = self._resolve_huggingface_provider(
+                self.model,
+                self.huggingface_provider,
+            )
         self.node.get_logger().info(
             f"Using chat model '{self.model}' with provider '{self.model_provider}'."
         )
+        if self.model_provider == "huggingface":
+            self.node.get_logger().info(
+                f"Using Hugging Face inference provider '{self.huggingface_provider}'."
+            )
 
         self.memory = MemorySaver()
         self.config = {"configurable": {"thread_id": "1"}}    
@@ -139,7 +180,7 @@ class Agent:
         response = agent_executor.invoke(
             {
                 "messages": [HumanMessage(content=content_blocks)]
-            }, 
+            },
             self.config
         )
         
@@ -150,6 +191,18 @@ class Agent:
         return response
     
     def create_executor(self):
+        chat_model = self._create_chat_model()
+        return create_react_agent(
+            chat_model,
+            self.tools,
+            checkpointer=self.memory,
+            prompt=self.prompt
+        )
+
+    def _create_chat_model(self):
+        if self.model_provider == "huggingface":
+            return self._create_huggingface_chat_model()
+
         chat_model_kwargs = {
             "model": self.model,
             "model_provider": self.model_provider,
@@ -158,15 +211,29 @@ class Agent:
             1.0 if self._uses_default_temperature_only() else self.temperature
         )
 
-        chat_model = init_chat_model(
-            **chat_model_kwargs
-        )
-        return create_react_agent(
-            chat_model,
-            self.tools,
-            checkpointer=self.memory,
-            prompt=self.prompt
-        )
+        return init_chat_model(**chat_model_kwargs)
+
+    def _create_huggingface_chat_model(self):
+        try:
+            from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
+        except ImportError as exc:
+            raise ImportError(
+                "Hugging Face models require the 'langchain-huggingface' package. "
+                "Install it with: python3 -m pip install --user langchain-huggingface"
+            ) from exc
+
+        endpoint_kwargs = {
+            "repo_id": self.model,
+            "task": self.huggingface_task,
+            "provider": self.huggingface_provider,
+            "max_new_tokens": self.max_new_tokens,
+            "temperature": self.temperature,
+            "do_sample": self.temperature > 0,
+        }
+        endpoint_kwargs.update(self.model_kwargs)
+
+        llm = HuggingFaceEndpoint(**endpoint_kwargs)
+        return ChatHuggingFace(llm=llm, temperature=self.temperature)
 
     @staticmethod
     def _resolve_model_provider(model: str, default_provider: Optional[str]) -> tuple[str, str]:
@@ -179,6 +246,17 @@ class Agent:
             return default_provider, model
 
         raise ValueError(f"Model provider is required for model '{model}'.")
+
+    @staticmethod
+    def _resolve_huggingface_provider(model: str, default_provider: str) -> tuple[str, str]:
+        if ":" not in model:
+            return default_provider, model
+
+        provider, repo_id = model.split(":", 1)
+        if provider in Agent.HF_INFERENCE_PROVIDERS and repo_id:
+            return provider, repo_id
+
+        return default_provider, model
 
     def _uses_default_temperature_only(self) -> bool:
         return (

@@ -32,6 +32,13 @@ Install Python user deps (PyQt6) into the environment you use to run ROS:
 pip install --user PyQt6
 ```
 
+For hosted Hugging Face models through LangChain, install the Hugging Face integration and expose your token:
+
+```bash
+pip install --user langchain-huggingface huggingface_hub
+export HUGGINGFACEHUB_API_TOKEN=hf_...
+```
+
 
 ## Build
 
@@ -152,8 +159,14 @@ You can add a new model to the dropdown by editing `config/prompts.yaml`:
 available_models:
 	- gpt-5
 	- gpt-5-mini
+	- huggingface:cohere:CohereLabs/aya-vision-32b
+	- huggingface:zai-org:zai-org/GLM-4.5V
 	- any other model available with langchain
 ```
+
+Models prefixed with `huggingface:` are loaded as hosted Hugging Face endpoints through `ChatHuggingFace(HuggingFaceEndpoint(...))`. Use `huggingface:<provider>:<model_id>` when the model requires a specific Inference Provider, for example `huggingface:cohere:CohereLabs/aya-vision-32b`. Use `huggingface:auto:<model_id>` to let Hugging Face choose among enabled providers. The default Hugging Face task is `image-text-to-text`, so select vision-language models that support image URL or data-URL inputs.
+
+Only add a Hugging Face model to this list after a direct `InferenceClient.chat_completion(...)` image test works with your account and provider settings.
 
 ### vision_functions.json
 
@@ -246,7 +259,3 @@ Function/tool specifications for the agent. Resolved in this order:
 colcon build --packages-select pm_co_pilot_vision
 source install/setup.bash
 ```
-
-
-
-

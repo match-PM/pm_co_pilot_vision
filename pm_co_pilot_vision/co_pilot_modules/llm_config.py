@@ -61,6 +61,11 @@ class LLMConfig:
         self.model_provider = entry['model_provider']
         self.temperature = entry['temperature']
         self.system_prompt = entry['system_prompt']
+        self.model_kwargs = entry.get('model_kwargs', {}) or {}
+        self.huggingface_provider = entry.get('huggingface_provider', 'auto')
+        self.huggingface_task = entry.get('huggingface_task', 'image-text-to-text')
+        self.max_new_tokens = entry.get('max_new_tokens', 1024)
+        self.supports_image_input = entry.get('supports_image_input', True)
 
         
         # self.llm = init_chat_model(self.model, model_provider=self.model_provider, temperature=self.temperature)

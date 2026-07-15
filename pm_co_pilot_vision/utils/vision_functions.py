@@ -45,10 +45,12 @@ class VisionHandler():
 
         self.image_name = image_name
         model_name = model_label or llm_config.model
-        self.pipeline_name = image_name.replace('.png', '') + "_" + model_name.replace(':', '_') + "_" + datetime.now().strftime("%Y%m%d_%H_%M_%S")
+        image_label = self._path_safe_label(Path(image_name).stem)
+        model_label_safe = self._path_safe_label(model_name)
+        self.pipeline_name = image_label + "_" + model_label_safe + "_" + datetime.now().strftime("%Y%m%d_%H_%M_%S")
         self.image_path = image_path
-        self.image_result_path = image_path + "/" + self.pipeline_name + "/"
-        self.image_processes_path = image_processes_path + "/" + self.pipeline_name + "/"
+        self.image_result_path = os.path.join(image_path, self.pipeline_name) + os.sep
+        self.image_processes_path = os.path.join(image_processes_path, self.pipeline_name) + os.sep
         self.callback_group_RE = ReentrantCallbackGroup()
 
         self._debug_log_list = None
@@ -116,6 +118,10 @@ class VisionHandler():
         self._sync_source_image_to_manager_db()
         self.magnification = self.vision_processor.image_processing_handler.magnification
         self.pixel_size_microns = self.vision_processor.image_processing_handler.pixelsize
+
+    @staticmethod
+    def _path_safe_label(value: str) -> str:
+        return re.sub(r"[^A-Za-z0-9_.-]+", "_", str(value)).strip("_") or "unnamed"
 
     def _sync_source_image_to_manager_db(self):
         source_image = Path(self.image_path, self.image_name).expanduser().resolve()
@@ -252,8 +258,11 @@ class VisionHandler():
                 final_image = display_image
             # final_image = self.vision_processor.image_processing_handler.get_initial_image_overlay()
 
-            # result_dict = vision_processor.save_vision_results()
-            vision_result_dict = self.vision_processor.image_processing_handler.get_vision_response()
+            # Match the normal pm_vision_manager result path: get_vision_response()
+            # returns detected objects, but metadata such as vision_ok is finalized here.
+            vision_result_dict = self.vision_processor.construct_results_metadata(
+                self.vision_processor.image_processing_handler.get_vision_response()
+            )
 
             self._debug_log_list = self.vision_processor.image_processing_handler.get_vision_process_debug()
             result_px = self._extract_and_clear_vision_logs()
