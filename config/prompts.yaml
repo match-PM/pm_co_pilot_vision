@@ -1,5 +1,7 @@
 available_models:
-- 'huggingface:auto:Qwen/Qwen3.6-35B-A3B'
+- 'openai:gpt-5'
+- 'openai:gpt-5-mini'
+- 'anthropic:claude-sonnet-4-5'
 - 'huggingface:cohere:CohereLabs/aya-vision-32b'
 - 'huggingface:novita:zai-org/GLM-4.5V'
 - 'huggingface:zai-org:zai-org/GLM-4.5V'
@@ -14,28 +16,20 @@ available_models:
 - 'huggingface:ovhcloud:Qwen/Qwen2.5-VL-72B-Instruct'
 - 'huggingface:featherless-ai:Qwen/Qwen3-VL-8B-Instruct'
 - 'huggingface:novita:Qwen/Qwen3-VL-30B-A3B-Instruct'
-- 'huggingface:featherless-ai:Qwen/Qwen3-VL-30B-A3B-Instruct'
-- 'huggingface:featherless-ai:Qwen/Qwen3-VL-32B-Instruct'
 - 'huggingface:deepinfra:Qwen/Qwen3.6-35B-A3B'
 - 'huggingface:deepinfra:Qwen/Qwen3.6-27B'
 - 'huggingface:together:Qwen/Qwen3.5-9B'
-- 'huggingface:featherless-ai:Qwen/Qwen3.5-4B'
 - 'huggingface:deepinfra:Qwen/Qwen3.5-27B'
 - 'huggingface:novita:Qwen/Qwen3.5-35B-A3B'
 - 'huggingface:novita:Qwen/Qwen3.5-122B-A10B'
 - 'huggingface:auto:google/gemma-4-31B-it'
-- 'huggingface:together:moonshotai/Kimi-K2.6'
-- 'huggingface:novita:moonshotai/Kimi-K2.7-Code'
 - 'huggingface:novita:moonshotai/Kimi-K2.5'
 - 'huggingface:deepinfra:moonshotai/Kimi-K2.5'
 - 'huggingface:novita:meta-llama/Llama-4-Scout-17B-16E-Instruct'
 - 'huggingface:deepinfra:meta-llama/Llama-4-Scout-17B-16E-Instruct'
 - 'huggingface:groq:meta-llama/Llama-4-Scout-17B-16E-Instruct'
 - 'huggingface:nscale:meta-llama/Llama-4-Scout-17B-16E-Instruct'
-- 'huggingface:featherless-ai:microsoft/Phi-4-mini-instruct'
-- 'huggingface:featherless-ai:microsoft/Phi-4-mini-reasoning'
-- 'huggingface:featherless-ai:microsoft/phi-4'
-- 'huggingface:deepinfra:microsoft/phi-4'
+
 
 
 agent_get_functions: 
