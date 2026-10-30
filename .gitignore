@@ -1,0 +1,27 @@
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Virtual environments / secrets
+.venv/
+venv/
+.env
+
+# colcon / ROS 2 build artifacts
+build/
+install/
+log/
+
+# OS
+.DS_Store
+Thumbs.db
